@@ -1,3 +1,11 @@
+.gitignore
+
+# Private Files
+.*
+
+# Backup Files
+*~
+
 # Prerequisites
 *.d
 
