@@ -33,11 +33,11 @@ Mamy trzy konteksty:
 
     bracket_expression	:=  "["	"^"? "]"? ( ordinary_character | collating_element | collating_symbol | equivalence_class | character_class | range_expression )+ "]"
 
-    
+
 9.3.1:	bre_single_element_match    	:= bre_orignary_character | bre_special_character | "]" | "." | bracket_expression
 
-9.4.1:	ere_single_element_match	:= ere_orignary_character | ere_special_character | "]"	| "}" | "." | bracket_expression 
-				 
-    
-  
+9.4.1:	ere_single_element_match	:= ere_orignary_character | ere_special_character | "]"	| "}" | "." | bracket_expression
+
+
+
 */

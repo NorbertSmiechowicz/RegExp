@@ -1,27 +1,40 @@
 
 #include "stream.h"
-#include <cstdint>
+#include <string_view>
 
 /* Stream */
 
 Stream::Stream( char const * string) :
-    m_Cursor{ reinterpret_cast< uint8_t const *>( string)},
-    m_BufferEnd{ reinterpret_cast< uint8_t const *>( string + strlen( string))}
+    m_Cursor{ string},
+    m_BufferEnd{ string + strlen( string)}
 {
 };
 
-Stream::Stream( uint8_t const * bufferStart, uint8_t const * bufferEnd) :
+Stream::Stream( char const * bufferStart, char const * bufferEnd) :
     m_Cursor{ bufferStart},
     m_BufferEnd{ bufferEnd}
-{    
+{
 };
 
 bool
-Stream::get_byte( uint8_t & outByte)
+Stream::get_char( char & outByte)
 {
     if( m_Cursor < m_BufferEnd)
     {
-	outByte = *(m_Cursor ++);	
+	outByte = *(m_Cursor ++);
+	return true;
+    };
+
+    return false;
+};
+
+bool
+Stream::get_string( std::string_view & outString, size_t length)
+{
+    if( m_Cursor + length < m_BufferEnd)
+    {
+	outString = std::string_view( m_Cursor, length);
+	m_Cursor += length;
 	return true;
     };
 

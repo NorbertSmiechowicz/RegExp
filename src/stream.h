@@ -13,18 +13,19 @@ class StreamCheckpoint;
 class Stream
 {
     friend class StreamCheckpoint;
-    
-public:
-    Stream( char const * string);
-    Stream( uint8_t const * bufferStart, uint8_t const * bufferEnd);
 
 public:
-    bool 			get_byte( uint8_t & outByte);    
+    Stream( char const * string);
+    Stream( char const * bufferStart, char const * bufferEnd);
+
+public:
+    bool 			get_char( char & outByte);
+    bool 			get_string( std::string_view & outString, size_t length);
     StreamCheckpoint		set_checkpoint();
-    
+
 private:
-    uint8_t const *		m_Cursor;
-    uint8_t const * const	m_BufferEnd;
+    char const *		m_Cursor;
+    char const * const		m_BufferEnd;
 };
 
 /* Streamcheckpoint */
@@ -37,10 +38,10 @@ public:
 
     void			commit();
     void			rollback();
-    
+
 private:
     Stream &			m_Stream;
-    uint8_t const *		m_CommitedCursor;
+    char const *		m_CommitedCursor;
 };
 
 
