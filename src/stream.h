@@ -19,13 +19,13 @@ public:
     Stream( char const * bufferStart, char const * bufferEnd);
 
 public:
-    bool 			get_char( char & outByte);
-    bool 			get_string( std::string_view & outString, size_t length);
-    StreamCheckpoint		set_checkpoint();
+    bool                    get_char( char & outByte);
+    bool                    get_string( std::string_view & outString, size_t length);
+    StreamCheckpoint        set_checkpoint();
 
 private:
-    char const *		m_Cursor;
-    char const * const		m_BufferEnd;
+    char const *            m_Cursor;
+    char const * const      m_BufferEnd;
 };
 
 /* Streamcheckpoint */
@@ -36,12 +36,12 @@ public:
     StreamCheckpoint( Stream & stream);
     ~StreamCheckpoint();
 
-    void			commit();
-    void			rollback();
+    void                    commit();
+    void                    rollback();
 
 private:
-    Stream &			m_Stream;
-    char const *		m_CommitedCursor;
+    Stream &                m_Stream;
+    char const *            m_CommitedCursor;
 };
 
 

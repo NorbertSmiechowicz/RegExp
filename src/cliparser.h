@@ -12,23 +12,23 @@
 
 
 /**
-   1.	command_line		:=	( flag_group | short_argument | long_argument )*
+    1.   command_line           :=  ( flag_group | short_argument | long_argument )*
 
-   2.	flag_group		:=	<short_key_prefix> ( <short_key> )+
+    2.  flag_group              :=  <short_key_prefix> ( <short_key> )+
 
-   3. 	short_argument		:= 	<short_key_prefix> <short_key> <value_prefix> value_sequence
+    3.  short_argument          :=  <short_key_prefix> <short_key> <value_prefix> value_sequence
 
-   4.	long_argument		:=	<long_key_prefix> <long_key> <value_prefix> value_sequence
+    4.  long_argument           :=  <long_key_prefix> <long_key> <value_prefix> value_sequence
 
-   5.	value_sequence		:=	( value ( <value_separator> value )* )?
+    5.  value_sequence          :=  ( value ( <value_separator> value )* )?
 
-   6.	value			:=	unquoted_value | singly_quoted_value | doubly_quoted_value
+    6.  value                   :=  unquoted_value | singly_quoted_value | doubly_quoted_value
 
-   7.	unquoted_value		:=	(! <white> )*
+    7.  unquoted_value          :=  (! <white> )*
 
-   8.	singly_quoted_value	:= 	<single_quotes> (! <single_quotes> )* <single_quotes>
+    8.  singly_quoted_value     :=  <single_quotes> (! <single_quotes> )* <single_quotes>
 
-   9.	doubly_quoted_value	:= 	<double_quotes> (! <double_quotes> )* <double_quotes>
+    9.  doubly_quoted_value     :=  <double_quotes> (! <double_quotes> )* <double_quotes>
 */
 
 
@@ -37,12 +37,10 @@ using ArgId = size_t;
 
 struct CommandLineArgumentTemplate
 {
-    ArgId			m_Id;
-    char const *		m_ShortKey;
-    char const *		m_LongKey;
+    ArgId               m_Id;
+    char const *        m_ShortKey;
+    char const *        m_LongKey;
 };
-
-
 
 class CommandLineArgumentDict
 {
@@ -55,22 +53,22 @@ class CommandLineArgumentDict
     using Dict = std::unordered_map< ArgId, Value>;
 
  public:
-    Value *			find_value( ArgId id);
+    Value *     find_value( ArgId id);
 
  protected:
-    void 			add_value( ArgId id, std::string_view value);
+    void        add_value( ArgId id, std::string_view value);
 
  protected:
-    Dict			m_Data;
+    Dict        m_Data;
 };
 
 class CommandLineArgumentParser
 {
  private:
-    static constexpr std::string 	ShortKeyPrefix{ "-"};
-    static constexpr std::string 	LongKeyPrefix{ "--"};
-    static constexpr std::string	ValuePrefix{ ""};
-    static constexpr std::string	ValueSeparator{ ""};
+    static constexpr std::string    ShortKeyPrefix{ "-"};
+    static constexpr std::string    LongKeyPrefix{ "--"};
+    static constexpr std::string    ValuePrefix{ ""};
+    static constexpr std::string    ValueSeparator{ ""};
 
  public:
     CommandLineArgumentParser( int argc, char* argv[], std::vector< CommandLineArgumentTemplate const> & cliArgTemplateListy);
@@ -92,16 +90,17 @@ class CommandLineArgumentParser
     bool try_syntax_value_separator();
 
  private:
-    int			    					m_ArgumentCount;
-    char ** 							m_ArgumentValues;
-    std::unique_ptr< CommandLineArgumentDict>			m_OutArgumentDict;
-    std::vector< CommandLineArgumentTemplate const> const &	m_ArgumentTemplates;
-    std::unordered_map< std::string_view, ArgId> 		m_ShortNameLookUpTable;
-    std::unordered_map< std::string_view, ArgId> 		m_LongNameLookUpTable;
+    int                                                         m_ArgumentCount;
+    char **                                                     m_ArgumentValues;
+    std::unique_ptr< CommandLineArgumentDict>                   m_OutArgumentDict;
+    std::vector< CommandLineArgumentTemplate const> const &     m_ArgumentTemplates;
+    std::unordered_map< std::string_view, ArgId>                m_ShortNameLookUpTable;
+    std::unordered_map< std::string_view, ArgId>                m_LongNameLookUpTable;
 };
 
 
-CommandLineArgumentParser::CommandLineArgumentParser( int argc, char* argv[], std::vector< CommandLineArgumentTemplate const> & cliArgTemplateList) :
+CommandLineArgumentParser::CommandLineArgumentParser( int argc, char* argv[], std::vector< CommandLineArgumentTemplate const> & cliArgTemplateList)
+:
     m_ArgumentCount{ argc},
     m_ArgumentValues{ argv},
     m_ArgumentTemplates{ cliArgTemplateList}
