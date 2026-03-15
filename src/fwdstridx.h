@@ -2,6 +2,8 @@
 #ifndef _FWDSTRIDX_H_
 # define _FWDSTRIDX_H_
 
+# include <string_view>
+
 class ForwardStringIndex
 {
     friend class ForwardStringIndexFactory;
@@ -12,7 +14,7 @@ class ForwardStringIndex
  public:
     ~ForwardStringIndex() noexcept;
 
-    void * find( char const * key, unsigned long keyLen) const noexcept;
+    void * find( std::string_view key) const noexcept;
     void * find( char const * key) const noexcept;
 
  private:

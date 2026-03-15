@@ -2,9 +2,7 @@
 #ifndef _STREAM_H_
 # define _STREAM_H_
 
-# ifndef _EXTERNAL_LIBRARIES_H_
-#  include "extlib.h"
-# endif//_EXTERNAL_LIBRARIES_H_
+#include <string_view>
 
 class StreamCheckpoint;
 

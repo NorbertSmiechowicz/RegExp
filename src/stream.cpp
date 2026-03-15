@@ -1,6 +1,7 @@
 
 #include "stream.h"
 #include <string_view>
+#include <string.h>
 
 /* Stream */
 

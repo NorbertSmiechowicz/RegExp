@@ -166,17 +166,15 @@ noexcept
 };
 
 void *
-ForwardStringIndex::find( char const * key, unsigned long keyLen)
+ForwardStringIndex::find( std::string_view key)
 const noexcept
 {
-    if( keyLen > 0)
+    if( key.length() > 0)
     {
-        std::string_view keyView{ key, keyLen};
-
-        if( ForwardStringIndexNode * node = find_terminal_node( GET_ROOT_NODE( this), keyView))
+        if( ForwardStringIndexNode * node = find_terminal_node( GET_ROOT_NODE( this), key))
         {
             auto & terminalNode = std::get< ForwardStringIndexTerminalNode>( node->m_Node);
-            return terminalNode.get_value( keyView);
+            return terminalNode.get_value( key);
         }
     }
 
@@ -189,7 +187,7 @@ const noexcept
 {
     size_t keyLen = strlen( key);
 
-    return find( key, keyLen);
+    return find( std::string_view( key, keyLen));
 };
 
 ForwardStringIndexFactory::ForwardStringIndexFactory()
