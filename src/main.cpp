@@ -1,5 +1,5 @@
 
-#include "fwdstridx.h"
+#include "forward_string_index.h"
 #include <memory>
 #include <vector>
 
