@@ -36,7 +36,7 @@ class ForwardStringIndex : public ForwardStringIndexBase
 {
 public:
 
-    ValueT *
+    inline ValueT *
     find( std::string_view key) const
     {   return reinterpret_cast< ValueT *>( base_find( key)); };
 
@@ -47,11 +47,11 @@ class ForwardStringIndexFactory : public ForwardStringIndexFactoryBase
 {
 public:
 
-    bool
+    inline bool
     add( std::string_view key, ValueT * value)
     {   return base_add( key, reinterpret_cast< void *>( value)); };
 
-    ForwardStringIndex< ValueT> *
+    inline ForwardStringIndex< ValueT> *
     emit()
     {   return static_cast< ForwardStringIndex< ValueT> *>( base_emit()); };
 

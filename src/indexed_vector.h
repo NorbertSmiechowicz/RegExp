@@ -34,8 +34,20 @@ public:
     rend() noexcept
     {   return m_Data.rend(); };
 
+    constexpr std::size_t
+    size() const noexcept
+    {
+        return m_Data.size();
+    };
+
+    constexpr bool
+    is_empty() const noexcept
+    {
+        return m_Data.empty();
+    };
+
     constexpr iterator
-    get( std::size_t pos) noexcept
+    get_at( std::size_t pos) noexcept
     {
         if( pos < m_Data.size())
             return m_Data.begin() + pos;
@@ -110,6 +122,27 @@ public:
             }
 
         return m_Data.end();
+    };
+
+    constexpr void
+    clear() noexcept
+    {
+        m_Data.clear();
+        m_Keys.clear();
+    };
+
+    constexpr void
+    shrink_buffer() noexcept
+    {
+        m_Data.shrink_to_fit();
+        m_Keys.shrink_to_fit();
+    };
+
+    constexpr void
+    free() noexcept
+    {
+        clear();
+        shrink_buffer();
     };
 };
 

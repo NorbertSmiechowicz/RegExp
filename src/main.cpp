@@ -68,7 +68,7 @@ int main( int /*argc*/, char* /*argv*/[])
 
     ForwardStringIndexFactory< char> testFactory;
 
-    std::vector< char const *> testOpt{ "a", "aa", "ab", "baaa", "baab", "baa", "bb", "bb"};
+    std::vector< char const *> testOpt{ "a", "aa", "ab", "baaa", "baab", "baa", "bb", "bb", "cccBcOcc", "cccBccccc", "cccDccc"};
 
     for( char const * opt : testOpt)
     {
@@ -78,8 +78,9 @@ int main( int /*argc*/, char* /*argv*/[])
 
     std::unique_ptr< ForwardStringIndex< char>> testIdx{ testFactory.emit()};
 
-    char * found = testIdx->find( "aa");
-    printf( "%s\n", found);
+    printf( "%s\n", testIdx->find( "cccBcOcc"));
+    printf( "%s\n", testIdx->find( "cccBccccc"));
+    printf( "%s\n", testIdx->find( "cccDccc"));
 
     return 0;
 }

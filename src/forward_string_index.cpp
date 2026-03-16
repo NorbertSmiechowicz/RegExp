@@ -107,7 +107,7 @@ public:
     bool                        insert( ForwardStringIndexPath key, void * value);
     bool                        on_key_conflict( void * value);
 
-    void                        prune();
+    bool                        prune();
 
     std::string_view            m_Key;
     void *                      m_Value;
@@ -205,10 +205,45 @@ ForwardStringIndexNode::on_key_conflict( void * /*value*/)
 };
 #endif
 
-void
+/*
+            / (2:nil) - (3:key) - (4:nil) - (5:key)
+    (1:nil)
+            \ (6:nil) - (7:nil) - (8:key)
+
+    >>
+
+            / (2:nil) - (3:key) - (5:key)
+    (1:nil)
+            \ (8:key)
+
+    Najgłębszy węzeł jest wynoszony zaraz pod drugi najgłębszy węzeł terminalny lub rozgałęznieie.
+*/
+
+bool
 ForwardStringIndexNode::prune()
 {
-    // TODO
+    if( m_ChildNodes.is_empty())
+        return true;
+
+    if( (m_ChildNodes.size() == 1) && (! is_terminal_node()))
+    {
+        ForwardStringIndexNode & onlyChild = *m_ChildNodes.get_at( 0);
+
+        if( onlyChild.prune())
+        {
+            m_Key = onlyChild.m_Key;
+            m_Value = onlyChild.m_Value;
+
+            m_ChildNodes.free();
+
+            return true;
+        }
+    }
+
+    for( ForwardStringIndexNode & childIter : m_ChildNodes)
+        childIter.prune();
+
+    return false;
 };
 
 ////////////////////////////////////////////////
