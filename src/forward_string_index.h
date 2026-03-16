@@ -2,36 +2,59 @@
 #ifndef _FORWARD_STRING_INDEX_
 # define _FORWARD_STRING_INDEX_
 
+# include <memory>
 # include <string_view>
 
-class ForwardStringIndex
+
+class ForwardStringIndexBase
 {
-    friend class ForwardStringIndexFactory;
+    friend class ForwardStringIndexFactoryBase;
 
- private:
-    ForwardStringIndex();
+protected:
+    ForwardStringIndexBase( void * rootNode);
+    ~ForwardStringIndexBase();
 
- public:
-    ~ForwardStringIndex();
+    void * base_find( std::string_view key) const;
 
-    void *                      find( std::string_view key) const;
-    void *                      find( char const * key) const;
-
- private:
-    void *                      m_RootNode;
+    void * m_RootNode;
 };
 
-class ForwardStringIndexFactory
+class ForwardStringIndexFactoryBase
 {
- public:
-    ForwardStringIndexFactory();
-    ~ForwardStringIndexFactory();
+protected:
+    ForwardStringIndexFactoryBase();
+    ~ForwardStringIndexFactoryBase();
 
-    ForwardStringIndex *        emit();
-    bool                        add( char const * key, void * value);
+    bool base_add( std::string_view key, void * value);
+    ForwardStringIndexBase * base_emit();
 
- private:
-    ForwardStringIndex *        m_IndexBuild;
+    void * m_BuildRootNode;
+};
+
+template< typename ValueT>
+class ForwardStringIndex : public ForwardStringIndexBase
+{
+public:
+
+    ValueT *
+    find( std::string_view key) const
+    {   return reinterpret_cast< ValueT *>( base_find( key)); };
+
+};
+
+template< typename ValueT>
+class ForwardStringIndexFactory : public ForwardStringIndexFactoryBase
+{
+public:
+
+    bool
+    add( std::string_view key, ValueT * value)
+    {   return base_add( key, reinterpret_cast< void *>( value)); };
+
+    ForwardStringIndex< ValueT> *
+    emit()
+    {   return static_cast< ForwardStringIndex< ValueT> *>( base_emit()); };
+
 };
 
 #endif//_FORWARD_STRING_INDEX_

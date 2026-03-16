@@ -1,10 +1,94 @@
 
 #include "forward_string_index.h"
-#include "indexd_vector.h"
+#include "indexed_vector.h"
 
+#include <cstddef>
 #include <cstring>
 #include <string_view>
 #include <utility>
+
+
+////////////////////////////////////////////////
+
+static constexpr std::string_view const EmptyKey = "";
+
+////////////////////////////////////////////////
+// ForwardStringIndexPath
+
+class ForwardStringIndexPath
+{
+public:
+    using iterator = std::string_view::iterator;
+
+    constexpr ForwardStringIndexPath();
+    constexpr ForwardStringIndexPath( std::string_view key);
+
+    constexpr std::size_t       size() const;
+    constexpr bool              is_empty() const;
+    constexpr bool              is_exhausted() const;
+
+    constexpr bool              next_segment( char & pathSegment);
+
+    constexpr iterator          begin();
+    constexpr iterator          end();
+
+    std::string_view            m_Key;
+    std::size_t                 m_Depth;
+};
+
+constexpr
+ForwardStringIndexPath::ForwardStringIndexPath()
+:
+    ForwardStringIndexPath( EmptyKey)
+{
+};
+
+constexpr
+ForwardStringIndexPath::ForwardStringIndexPath( std::string_view key)
+:
+    m_Key{ key}, m_Depth{ 0}
+{
+};
+
+constexpr std::size_t
+ForwardStringIndexPath::size() const
+{
+    return m_Key.size();
+};
+
+constexpr bool
+ForwardStringIndexPath::is_empty() const
+{
+    return m_Key == EmptyKey;
+};
+
+constexpr bool
+ForwardStringIndexPath::is_exhausted() const
+{
+    return m_Depth >= size();
+};
+
+constexpr bool
+ForwardStringIndexPath::next_segment( char & pathSegment)
+{
+    if( is_exhausted())
+        return false;
+
+    pathSegment = m_Key[ m_Depth ++];
+    return true;
+};
+
+constexpr ForwardStringIndexPath::iterator
+ForwardStringIndexPath::begin()
+{
+    return m_Key.begin();
+};
+
+constexpr ForwardStringIndexPath::iterator
+ForwardStringIndexPath::end()
+{
+    return m_Key.end();
+};
 
 ////////////////////////////////////////////////
 // ForwardStringIndexNode
@@ -14,18 +98,27 @@ class ForwardStringIndexNode
 public:
     using IdxVector = IndexedVector< char, ForwardStringIndexNode>;
 
+    ForwardStringIndexNode();
     ForwardStringIndexNode( std::string_view key, void * value);
 
-    ForwardStringIndexNode *    find_child_node( char key);
-    ForwardStringIndexNode *    find_terminal_node( std::string_view key);
+    bool                        is_terminal_node();
+    ForwardStringIndexNode *    find_terminal_node( ForwardStringIndexPath key);
 
-    bool                        insert( std::string_view key, std::size_t charPos, void * value);
-    bool                        insert_resolve_conflict( ForwardStringIndexNode & conflictingNode, std::string_view key, std::size_t charPos, void * value);
-    bool                        on_key_overwrite( void * value);
+    bool                        insert( ForwardStringIndexPath key, void * value);
+    bool                        on_key_conflict( void * value);
+
+    void                        prune();
 
     std::string_view            m_Key;
     void *                      m_Value;
     IdxVector                   m_ChildNodes;
+};
+
+ForwardStringIndexNode::ForwardStringIndexNode()
+:
+    m_Key{ EmptyKey},
+    m_Value{ nullptr}
+{
 };
 
 ForwardStringIndexNode::ForwardStringIndexNode( std::string_view key, void * value)
@@ -35,182 +128,163 @@ ForwardStringIndexNode::ForwardStringIndexNode( std::string_view key, void * val
 {
 };
 
-ForwardStringIndexNode *
-ForwardStringIndexNode::find_child_node( char keyChar)
+bool
+ForwardStringIndexNode::is_terminal_node()
 {
-    IdxVector::iterator childIter = m_ChildNodes.get( keyChar);
-
-    if( childIter != m_ChildNodes.end())
-        return &*childIter;
-
-    return nullptr;
+    return m_Key != EmptyKey;
 };
 
 ForwardStringIndexNode *
-ForwardStringIndexNode::find_terminal_node( std::string_view key)
+ForwardStringIndexNode::find_terminal_node( ForwardStringIndexPath path)
 {
+    if( path.is_empty())
+        return nullptr;
+
+    std::size_t matchedSegments = 0;
     ForwardStringIndexNode * node = this;
 
-    for( char const keyChar : key)
-        if( ! (node = node->find_child_node( keyChar)))
-            return nullptr;
+    for( char const segment : path)
+    {
+        IdxVector::iterator childIter = node->m_ChildNodes.get( segment);
 
-    if( node->m_Key == key)
-        return node;
+        if( childIter == node->m_ChildNodes.end())
+            break;
+
+        node = &*childIter;
+        matchedSegments ++;
+    }
+
+    if( path.size() == matchedSegments)
+        if( node->m_Key.size() == matchedSegments)
+            return node;
+
+    if( node->m_Key.size() > matchedSegments)
+        if( &node->m_Key[ matchedSegments] == &path.m_Key[ matchedSegments])
+            return node;
 
     return nullptr;
 };
 
 bool
-ForwardStringIndexNode::insert( std::string_view key, std::size_t charPos, void * value)
+ForwardStringIndexNode::insert( ForwardStringIndexPath path, void * value)
 {
-    char keyChar = key[ charPos];
+    char pathSegment = '\0';
+    ForwardStringIndexNode * node = this;
 
-    IdxVector::iterator conflictingNodeIter = m_ChildNodes.get( keyChar);
-
-    if( conflictingNodeIter == m_ChildNodes.end())
+    while( path.next_segment( pathSegment))
     {
-        m_ChildNodes.emplace( keyChar, key, value);
-        return true;
+        IdxVector::iterator childIter = node->m_ChildNodes.get( pathSegment);
+
+        if( childIter == node->m_ChildNodes.end())
+            node = &*node->m_ChildNodes.emplace( pathSegment);
+        else
+            node = &*childIter;
     }
 
-    return insert_resolve_conflict( *conflictingNodeIter, key, charPos, value);
-};
+    if( node->is_terminal_node())
+        return node->on_key_conflict( value);
 
-bool
-ForwardStringIndexNode::insert_resolve_conflict( ForwardStringIndexNode & conflictingNode, std::string_view key, std::size_t charPos, void * value)
-{
-    charPos ++;
+    node->m_Key = path.m_Key;
+    node->m_Value = value;
 
-    std::size_t newKeyLen = key.length();
-    std::size_t conflictingKeyLen = conflictingNode.m_Key.length();
-
-    if( ! (conflictingKeyLen > charPos)) // W starym kluczu już nic nie ma ...
-    {
-        if( newKeyLen > charPos) // ... ale w nowym jeszcze mamy znaki - więc nowy zawiera całkowicie stary w przedrostku.
-        {
-            return conflictingNode.insert( key, charPos, value);
-        }
-        else // ... i w nowym też, a mamy konflikt - więc są takie same i wpisujemy wartość do isteniejącego klucza.
-        {
-            return conflictingNode.on_key_overwrite( value);
-        }
-    }
-    else // Stary klucz ma więcej znaków ...
-    {
-        if( ! (newKeyLen > charPos)) // ... ale w nowym się skończyły - czyli nowy zawiera się całkowicie w przedrostku starego.
-        {
-            if( ! conflictingNode.insert( conflictingNode.m_Key, charPos, conflictingNode.m_Value))
-                return false;
-
-            conflictingNode.m_Key = key;
-            conflictingNode.m_Value = value;
-
-            return true;
-        }
-        else // ... i w nowym też - czyli wspólny przedrostek nie prowadzi do unikalnej wartości.
-        {
-            if( ! conflictingNode.insert( conflictingNode.m_Key, charPos, conflictingNode.m_Value))
-                return false;
-
-            conflictingNode.m_Key = "";
-            conflictingNode.m_Value = nullptr;
-
-            return conflictingNode.insert( key, charPos, value);
-        }
-    }
+    return true;
 };
 
 #ifdef OVERWRITE_VALUE_ON_KEY_CONFLICT
 bool
-ForwardStringIndexNode::on_key_overwrite( void * value)
+ForwardStringIndexNode::on_key_conflict( void * value)
 {
     m_Value = value;
     return true;
 };
 #else
 bool
-ForwardStringIndexNode::on_key_overwrite( void * /*value*/)
+ForwardStringIndexNode::on_key_conflict( void * /*value*/)
 {
     return false;
 };
 #endif
 
+void
+ForwardStringIndexNode::prune()
+{
+    // TODO
+};
+
 ////////////////////////////////////////////////
-// ForwardStringIndex
+// ForwardStringIndexBase
 
-#define GET_ROOT_NODE( fsi) reinterpret_cast< ForwardStringIndexNode *>( fsi->m_RootNode)
-
-ForwardStringIndex::ForwardStringIndex()
+ForwardStringIndexBase::ForwardStringIndexBase( void * rootNode)
 :
-    m_RootNode{ nullptr}
+    m_RootNode{ rootNode}
 {
 };
 
-ForwardStringIndex::~ForwardStringIndex()
+ForwardStringIndexBase::~ForwardStringIndexBase()
 {
     if( m_RootNode != nullptr)
     {
-        ForwardStringIndexNode * rootNode = GET_ROOT_NODE( this);
+        ForwardStringIndexNode * rootNode = static_cast< ForwardStringIndexNode *>( m_RootNode);
+
         delete rootNode;
+        m_RootNode = nullptr;
     }
 };
 
 void *
-ForwardStringIndex::find( std::string_view key)
-const
+ForwardStringIndexBase::base_find( std::string_view key) const
 {
-    if( ForwardStringIndexNode * node = GET_ROOT_NODE( this)->find_terminal_node( key))
+    ForwardStringIndexNode * rootNode = static_cast< ForwardStringIndexNode *>( m_RootNode);
+
+    if( ForwardStringIndexNode * node = rootNode->find_terminal_node( ForwardStringIndexPath( key)))
         return node->m_Value;
 
     return nullptr;
 };
 
-void *
-ForwardStringIndex::find( char const * key)
-const
-{
-    size_t keyLen = strlen( key);
-
-    return find( std::string_view( key, keyLen));
-};
-
 ////////////////////////////////////////////////
-// ForwardStringIndexFactory
+// ForwardStringIndexFactoryBase
 
-ForwardStringIndexFactory::ForwardStringIndexFactory()
+ForwardStringIndexFactoryBase::ForwardStringIndexFactoryBase()
 :
-    m_IndexBuild{ nullptr}
+    m_BuildRootNode{ nullptr}
 {
 };
 
-ForwardStringIndexFactory::~ForwardStringIndexFactory()
+ForwardStringIndexFactoryBase::~ForwardStringIndexFactoryBase()
 {
-    if( m_IndexBuild != nullptr)
-        delete m_IndexBuild;
+    if( m_BuildRootNode != nullptr)
+    {
+        ForwardStringIndexNode * rootNode = static_cast< ForwardStringIndexNode *>( m_BuildRootNode);
+
+        delete rootNode;
+        m_BuildRootNode = nullptr;
+    }
 };
 
 bool
-ForwardStringIndexFactory::add( char const * key, void * value)
+ForwardStringIndexFactoryBase::base_add( std::string_view key, void * value)
 {
-    std::size_t keyLen = strlen( key);
-
-    if( keyLen == 0)
+    if( key == EmptyKey)
         return false;
 
-    if( m_IndexBuild == nullptr)
-    {
-        m_IndexBuild = new ForwardStringIndex();
-        m_IndexBuild->m_RootNode = new ForwardStringIndexNode( "", nullptr);
-    }
+    if( m_BuildRootNode == nullptr)
+        m_BuildRootNode = new ForwardStringIndexNode();
 
-    std::string_view keyView{ key, keyLen};
+    ForwardStringIndexNode * rootNode = static_cast< ForwardStringIndexNode *>( m_BuildRootNode);
 
-    return GET_ROOT_NODE( m_IndexBuild)->insert( keyView, 0, value);
+    return rootNode->insert( ForwardStringIndexPath( key), value);
 };
 
-ForwardStringIndex *
-ForwardStringIndexFactory::emit()
+ForwardStringIndexBase *
+ForwardStringIndexFactoryBase::base_emit()
 {
-    return std::exchange( m_IndexBuild, nullptr);
+    if( m_BuildRootNode == nullptr)
+        return nullptr;
+
+    ForwardStringIndexNode * rootNode = static_cast< ForwardStringIndexNode *>( m_BuildRootNode);
+
+    rootNode->prune();
+
+    return new ForwardStringIndexBase( std::exchange( m_BuildRootNode, nullptr));
 };

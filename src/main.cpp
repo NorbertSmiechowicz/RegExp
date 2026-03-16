@@ -29,7 +29,6 @@ enum class CliArgType
 
 #define CLI_ARG_DEFS( WRAPPER, TYPE, ID, SNAME, LNAME, HELP)\
     WRAPPER( TYPE( Flag)            ID( Help)           SNAME( "h")     LNAME( "help")      HELP( "Displays this message."))\
-    WRAPPER( TYPE( Flag)            ID( Help1)          SNAME( "hH")    LNAME( "help")      HELP( "Displays this message."))\
     WRAPPER( TYPE( Sequence)        ID( File)           SNAME( "f")     LNAME( "files")     HELP( "Files to perform search on."))
 
 
@@ -57,21 +56,30 @@ static std::vector< CliArgTemplate> const CommandLineArgumentTemplateList
 
 int main( int /*argc*/, char* /*argv*/[])
 {
-    ForwardStringIndexFactory idxFactory;
+    ForwardStringIndexFactory< CliArgId> idxFactory;
 
     for( CliArgTemplate const & argTemplate : CommandLineArgumentTemplateList)
-        if( ! idxFactory.add( argTemplate.ShortName.data(), RC( void *, CC( CliArgId *, &argTemplate.Id))))
+        if( ! idxFactory.add( argTemplate.ShortName.data(), CC( CliArgId *, &argTemplate.Id)))
             printf( "Cli argument short name: `%s` was not indexed due to conflicts.\n", argTemplate.ShortName.data());
 
-    std::unique_ptr< ForwardStringIndex> shortNameIndex{ idxFactory.emit()};
+    std::unique_ptr< ForwardStringIndex< CliArgId>> shortNameIndex{ idxFactory.emit()};
 
-    void * argId = nullptr;
+    ////////////////////////////////////////////////
 
-    for( char const * opt : { "h", "AB", "AC"})
+    ForwardStringIndexFactory< char> testFactory;
+
+    std::vector< char const *> testOpt{ "a", "aa", "ab", "baaa", "baab", "baa", "bb", "bb"};
+
+    for( char const * opt : testOpt)
     {
-        argId  = shortNameIndex->find( opt);
-        printf( "%p -> %d\n", argId, (argId == nullptr) ? -1 : *SC( int *, argId));
+        if( ! testFactory.add( opt, CC( char *, opt)))
+            printf( "fail: %s\n", opt);
     }
+
+    std::unique_ptr< ForwardStringIndex< char>> testIdx{ testFactory.emit()};
+
+    char * found = testIdx->find( "aa");
+    printf( "%s\n", found);
 
     return 0;
 }

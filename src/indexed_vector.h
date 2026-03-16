@@ -18,42 +18,24 @@ public:
     using iterator = DataVector::iterator;
     using reverse_iterator = DataVector::reverse_iterator;
 
-    constexpr
-    iterator
-    begin()
-    noexcept
-    {
-        return m_Data.begin();
-    };
+    constexpr iterator
+    begin() noexcept
+    {   return m_Data.begin(); };
 
-    constexpr
-    iterator
-    end()
-    noexcept
-    {
-        return m_Data.end();
-    };
+    constexpr iterator
+    end() noexcept
+    {   return m_Data.end(); };
 
-    constexpr
-    reverse_iterator
-    rbegin()
-    noexcept
-    {
-        return m_Data.rbegin();
-    };
+    constexpr reverse_iterator
+    rbegin() noexcept
+    {   return m_Data.rbegin(); };
 
-    constexpr
-    reverse_iterator
-    rend()
-    noexcept
-    {
-        return m_Data.rend();
-    };
+    constexpr reverse_iterator
+    rend() noexcept
+    {   return m_Data.rend(); };
 
-    constexpr
-    iterator
-    get( std::size_t pos)
-    noexcept
+    constexpr iterator
+    get( std::size_t pos) noexcept
     {
         if( pos < m_Data.size())
             return m_Data.begin() + pos;
@@ -61,18 +43,12 @@ public:
         return m_Data.end();
     };
 
-    constexpr
-    iterator
-    get( KeyVector::iterator key)
-    noexcept
-    {
-        return m_Data.begin() + std::distance( m_Keys.begin(), key);
-    };
+    constexpr iterator
+    get( KeyVector::iterator key) noexcept
+    {   return m_Data.begin() + std::distance( m_Keys.begin(), key); };
 
-    constexpr
-    iterator
-    get( KeyT key)
-    noexcept
+    constexpr iterator
+    get( KeyT key) noexcept
     {
         auto greaterOrEqualKeyIter = std::lower_bound( m_Keys.begin(), m_Keys.end(), key);
 
@@ -83,55 +59,57 @@ public:
         return m_Data.end();
     };
 
-    constexpr
-    void
-    insert( KeyT key, DataT const & data)
-    noexcept
+    constexpr iterator
+    insert( KeyT key, DataT const & data) noexcept
     {
         auto greaterOrEqualKeyIter = std::lower_bound( m_Keys.begin(), m_Keys.end(), key);
 
         // Kolejność jest ważna z uwagi na unieważnienie iteratora
 
-        m_Data.insert( get( greaterOrEqualKeyIter), data);
+        auto inserted = m_Data.insert( get( greaterOrEqualKeyIter), data);
         m_Keys.insert( greaterOrEqualKeyIter, key);
+
+        return inserted;
     };
 
-    constexpr
-    void
-    insert( KeyT key, DataT && data)
-    noexcept
+    constexpr iterator
+    insert( KeyT key, DataT && data) noexcept
     {
         auto greaterOrEqualKeyIter = std::lower_bound( m_Keys.begin(), m_Keys.end(), key);
 
-        m_Data.insert( get( greaterOrEqualKeyIter), std::move( data));
+        auto inserted = m_Data.insert( get( greaterOrEqualKeyIter), std::move( data));
         m_Keys.insert( greaterOrEqualKeyIter, key);
+
+        return inserted;
     };
 
     template< typename ... _ConstructorArgs>
-    constexpr
-    void
-    emplace( KeyT key, _ConstructorArgs && ... args)
-    noexcept
+    constexpr iterator
+    emplace( KeyT key, _ConstructorArgs && ... args) noexcept
     {
         auto greaterOrEqualKeyIter = std::lower_bound( m_Keys.begin(), m_Keys.end(), key);
 
-        m_Data.emplace( get( greaterOrEqualKeyIter), std::forward< _ConstructorArgs>( args)...);
+        auto inserted = m_Data.emplace( get( greaterOrEqualKeyIter), std::forward< _ConstructorArgs>( args)...);
         m_Keys.insert( greaterOrEqualKeyIter, key);
+
+        return inserted;
     };
 
-    constexpr
-    void
-    remove( KeyT key)
-    noexcept
+    constexpr iterator
+    remove( KeyT key) noexcept
     {
         auto greaterOrEqualKeyIter = std::lower_bound( m_Keys.begin(), m_Keys.end(), key);
 
         if( greaterOrEqualKeyIter != m_Keys.end())
             if( *greaterOrEqualKeyIter == key)
             {
-                m_Data.erase( get( greaterOrEqualKeyIter));
+                auto removed = m_Data.erase( get( greaterOrEqualKeyIter));
                 m_Keys.erase( greaterOrEqualKeyIter);
+
+                return removed;
             }
+
+        return m_Data.end();
     };
 };
 
