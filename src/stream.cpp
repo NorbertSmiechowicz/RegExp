@@ -1,18 +1,19 @@
 
 #include "stream.h"
-#include <string_view>
 #include <string.h>
+#include <string_view>
 
-/* Stream */
+////////////////////////////////////////////////
+//  Stream
 
-Stream::Stream( char const * string)
+StreamView::StreamView( char const * string)
 :
     m_Cursor{ string},
     m_BufferEnd{ string + strlen( string)}
 {
 };
 
-Stream::Stream( char const * bufferStart, char const * bufferEnd)
+StreamView::StreamView( char const * bufferStart, char const * bufferEnd)
 :
     m_Cursor{ bufferStart},
     m_BufferEnd{ bufferEnd}
@@ -20,11 +21,11 @@ Stream::Stream( char const * bufferStart, char const * bufferEnd)
 };
 
 bool
-Stream::get_char( char & outByte)
+StreamView::peek_char( char & outChar)
 {
     if( m_Cursor < m_BufferEnd)
     {
-        outByte = *(m_Cursor ++);
+        outChar = *m_Cursor;
         return true;
     };
 
@@ -32,11 +33,24 @@ Stream::get_char( char & outByte)
 };
 
 bool
-Stream::get_string( std::string_view & outString, size_t length)
+StreamView::get_char( char & outChar)
+{
+    if( m_Cursor + 1 < m_BufferEnd)
+    {
+        outChar = *m_Cursor;
+        m_Cursor ++;
+        return true;
+    };
+
+    return false;
+};
+
+bool
+StreamView::get_string_view( char const *& outString, size_t length)
 {
     if( m_Cursor + length < m_BufferEnd)
     {
-        outString = std::string_view( m_Cursor, length);
+        outString = m_Cursor;
         m_Cursor += length;
         return true;
     };
@@ -44,34 +58,62 @@ Stream::get_string( std::string_view & outString, size_t length)
     return false;
 };
 
-StreamCheckpoint
-Stream::set_checkpoint()
+bool
+StreamView::at_string( char const * compareTo, unsigned long length)
 {
-    return StreamCheckpoint( *this);
+    if( m_Cursor + length < m_BufferEnd)
+    {
+        std::string_view currentSubString{ m_Cursor, length};
+        std::string_view compareToString{ compareTo, length};
+
+        return currentSubString == compareToString;
+    }
+
+    return false;
 };
 
-/* StreamCheckpoint */
+bool
+StreamView::skip_chars( unsigned long count)
+{
+    if( m_Cursor + count < m_BufferEnd)
+    {
+        m_Cursor += count;
+        return true;
+    };
 
-StreamCheckpoint::StreamCheckpoint( Stream & stream)
+    return false;
+};
+
+StreamViewCheckpoint
+StreamView::set_checkpoint()
+{
+    return StreamViewCheckpoint( *this);
+};
+
+////////////////////////////////////////////////
+//  StreamCheckpoint
+
+StreamViewCheckpoint::StreamViewCheckpoint( StreamView & stream)
 :
     m_Stream{ stream}
 {
-    commit();
+    update();
 };
 
-StreamCheckpoint::~StreamCheckpoint()
+StreamViewCheckpoint::~StreamViewCheckpoint()
 {
     rollback();
 };
 
-void
-StreamCheckpoint::commit()
+bool
+StreamViewCheckpoint::update()
 {
     m_CommitedCursor = m_Stream.m_Cursor;
+    return true;
 };
 
 void
-StreamCheckpoint::rollback()
+StreamViewCheckpoint::rollback()
 {
     m_Stream.m_Cursor = m_CommitedCursor;
 };

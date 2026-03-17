@@ -2,43 +2,47 @@
 #ifndef _STREAM_H_
 # define _STREAM_H_
 
-#include <string_view>
+class StreamViewCheckpoint;
 
-class StreamCheckpoint;
+////////////////////////////////////////////////
+//  Stream
 
-/* Stream */
-
-class Stream
+class StreamView
 {
-    friend class StreamCheckpoint;
+    friend class StreamViewCheckpoint;
 
 public:
-    Stream( char const * string);
-    Stream( char const * bufferStart, char const * bufferEnd);
+    StreamView( char const * string);
+    StreamView( char const * bufferStart, char const * bufferEnd);
 
 public:
-    bool                    get_char( char & outByte);
-    bool                    get_string( std::string_view & outString, size_t length);
-    StreamCheckpoint        set_checkpoint();
+    [[nodiscard]] bool      peek_char( char & outChar);
+    [[nodiscard]] bool      get_char( char & outChar);
+    [[nodiscard]] bool      get_string_view( char const *& outString, unsigned long length);
+    [[nodiscard]] bool      at_string( char const * compareTo, unsigned long length);
+    [[nodiscard]] bool      skip_chars( unsigned long count);
+
+    StreamViewCheckpoint    set_checkpoint();
 
 private:
     char const *            m_Cursor;
     char const * const      m_BufferEnd;
 };
 
-/* Streamcheckpoint */
+////////////////////////////////////////////////
+//  StreamViewCheckpoint
 
-class StreamCheckpoint
+class StreamViewCheckpoint
 {
 public:
-    StreamCheckpoint( Stream & stream);
-    ~StreamCheckpoint();
+    StreamViewCheckpoint( StreamView & stream);
+    ~StreamViewCheckpoint();
 
-    void                    commit();
+    bool                    update();
     void                    rollback();
 
 private:
-    Stream &                m_Stream;
+    StreamView &            m_Stream;
     char const *            m_CommitedCursor;
 };
 
