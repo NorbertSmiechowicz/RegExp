@@ -13,7 +13,6 @@
 static constexpr std::string_view const EmptyKey = "";
 
 ////////////////////////////////////////////////
-// ForwardStringIndexPath
 
 class ForwardStringIndexPath
 {
@@ -35,6 +34,32 @@ public:
     std::string_view            m_Key;
     std::size_t                 m_Depth;
 };
+
+////////////////////////////////////////////////
+
+class ForwardStringIndexNode
+{
+public:
+    using IdxVector = IndexedVector< char, ForwardStringIndexNode>;
+
+    ForwardStringIndexNode();
+    ForwardStringIndexNode( std::string_view key, void * value);
+
+    bool                        is_terminal_node();
+    ForwardStringIndexNode *    find_terminal_node( ForwardStringIndexPath key);
+
+    bool                        insert( ForwardStringIndexPath key, void * value);
+    bool                        on_key_conflict( void * value);
+
+    bool                        prune();
+
+    std::string_view            m_Key;
+    void *                      m_Value;
+    IdxVector                   m_ChildNodes;
+};
+
+////////////////////////////////////////////////
+// ForwardStringIndexPath
 
 constexpr
 ForwardStringIndexPath::ForwardStringIndexPath()
@@ -92,27 +117,6 @@ ForwardStringIndexPath::end()
 
 ////////////////////////////////////////////////
 // ForwardStringIndexNode
-
-class ForwardStringIndexNode
-{
-public:
-    using IdxVector = IndexedVector< char, ForwardStringIndexNode>;
-
-    ForwardStringIndexNode();
-    ForwardStringIndexNode( std::string_view key, void * value);
-
-    bool                        is_terminal_node();
-    ForwardStringIndexNode *    find_terminal_node( ForwardStringIndexPath key);
-
-    bool                        insert( ForwardStringIndexPath key, void * value);
-    bool                        on_key_conflict( void * value);
-
-    bool                        prune();
-
-    std::string_view            m_Key;
-    void *                      m_Value;
-    IdxVector                   m_ChildNodes;
-};
 
 ForwardStringIndexNode::ForwardStringIndexNode()
 :

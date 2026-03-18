@@ -2,7 +2,6 @@
 #ifndef _FORWARD_STRING_INDEX_
 # define _FORWARD_STRING_INDEX_
 
-# include <memory>
 # include <string_view>
 
 

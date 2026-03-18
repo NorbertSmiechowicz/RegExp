@@ -6,6 +6,13 @@
 ////////////////////////////////////////////////
 //  Stream
 
+StreamView::StreamView()
+:
+    m_Cursor{ nullptr},
+    m_BufferEnd{ nullptr}
+{
+};
+
 StreamView::StreamView( char const * string)
 :
     m_Cursor{ string},
@@ -18,6 +25,13 @@ StreamView::StreamView( char const * bufferStart, char const * bufferEnd)
     m_Cursor{ bufferStart},
     m_BufferEnd{ bufferEnd}
 {
+    set_white( " \t\r\n");
+};
+
+void
+StreamView::set_white( char const * charset)
+{
+    m_WhiteCharSet = charset;
 };
 
 bool
@@ -35,7 +49,7 @@ StreamView::peek_char( char & outChar)
 bool
 StreamView::get_char( char & outChar)
 {
-    if( m_Cursor + 1 < m_BufferEnd)
+    if( m_Cursor < m_BufferEnd)
     {
         outChar = *m_Cursor;
         m_Cursor ++;
@@ -48,7 +62,7 @@ StreamView::get_char( char & outChar)
 bool
 StreamView::get_string_view( char const *& outString, size_t length)
 {
-    if( m_Cursor + length < m_BufferEnd)
+    if( m_Cursor + length <= m_BufferEnd)
     {
         outString = m_Cursor;
         m_Cursor += length;
@@ -73,15 +87,25 @@ StreamView::at_string( char const * compareTo, unsigned long length)
 };
 
 bool
-StreamView::skip_chars( unsigned long count)
+StreamView::skip_char_count( unsigned long count)
 {
-    if( m_Cursor + count < m_BufferEnd)
+    if( m_Cursor + count <= m_BufferEnd)
     {
         m_Cursor += count;
         return true;
     };
 
     return false;
+};
+
+void
+StreamView::skip_white()
+{
+    while( strchr( m_WhiteCharSet, *m_Cursor) != nullptr)
+        if( m_Cursor < m_BufferEnd)
+            m_Cursor ++;
+        else
+            return;
 };
 
 StreamViewCheckpoint

@@ -12,21 +12,26 @@ class StreamView
     friend class StreamViewCheckpoint;
 
 public:
+    StreamView();
     StreamView( char const * string);
     StreamView( char const * bufferStart, char const * bufferEnd);
 
 public:
+    void                    set_white( char const * charset);
+
     [[nodiscard]] bool      peek_char( char & outChar);
     [[nodiscard]] bool      get_char( char & outChar);
     [[nodiscard]] bool      get_string_view( char const *& outString, unsigned long length);
     [[nodiscard]] bool      at_string( char const * compareTo, unsigned long length);
-    [[nodiscard]] bool      skip_chars( unsigned long count);
+    [[nodiscard]] bool      skip_char_count( unsigned long count);
+    void                    skip_white();
 
     StreamViewCheckpoint    set_checkpoint();
 
 private:
+    char const *            m_WhiteCharSet;
     char const *            m_Cursor;
-    char const * const      m_BufferEnd;
+    char const *            m_BufferEnd;
 };
 
 ////////////////////////////////////////////////
