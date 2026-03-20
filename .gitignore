@@ -2,8 +2,8 @@
 
 # Private Files
 .*
-
 build
+compile_commands.json
 
 # Emacs Backup Files
 *~

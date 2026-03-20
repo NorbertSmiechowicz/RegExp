@@ -49,11 +49,11 @@ $(BUILD_SUBDIRS):
 
 $(COBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.c | $(BUILD_SUBDIRS)
 	$(call LOG_MSG,compiling: $@)
-	$(CC) $(CFLAGS) -c $^ -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(CXXOBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.cpp | $(BUILD_SUBDIRS)
 	$(call LOG_MSG,compiling: $@)
-	$(CXX) $(CXXFLAGS) -c $^ -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 debug:
 	$(MAKE) -k BUILD=debug
