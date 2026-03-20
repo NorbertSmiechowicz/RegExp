@@ -1,67 +1,69 @@
-# Compiler
-CXX := g++
-STD := -std=c++20
 
-# Directories
-SRC_DIR := src
-BUILD_DIR := build
-TARGET := app
+CC					:= gcc
+CXX					:= g++
 
-# Build type (default = release)
-BUILD ?= debug
+SRC_ROOT 			:= src
+SRC_DIRS			:= src
+TARGET				:= build/app
 
-# Flags
-COMMON_FLAGS := $(STD) -Wall -Wextra -Wpedantic
-DEBUG_FLAGS := -g -O0
-RELEASE_FLAGS := -O3 -DNDEBUG
+CSTD				:= -std=c23
+CXXSTD				:= -std=c++20
+
+COMMON_FLAGS		:= -MMD -MP -Wall -Wextra -Wpedantic
+DEBUG_FLAGS			:= -g -O0
+RELEASE_FLAGS		:= -O3 -DNDEBUG
+
+BUILD				?= debug
 
 ifeq ($(BUILD),debug)
-    CXXFLAGS := $(COMMON_FLAGS) $(DEBUG_FLAGS)
-    BUILD_SUBDIR := $(BUILD_DIR)/debug
+	CFLAGS			:= $(CSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS)
+    CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS)
+	BUILD_ROOT		:= build/debug
 else
-    CXXFLAGS := $(COMMON_FLAGS) $(RELEASE_FLAGS)
-    BUILD_SUBDIR := $(BUILD_DIR)/release
+	CFLAGS			:= $(CSTD) $(COMMON_FLAGS) $(RELEASE_FLAGS)
+    CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) $(RELEASE_FLAGS)
+	BUILD_ROOT		:= build/release
 endif
 
-# Sources
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+CSRC				:= $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
+CXXSRC				:= $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
 
-# Objects
-OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_SUBDIR)/%.o)
-DEPS := $(OBJS:.o=.d)
+BUILD_SUBDIRS		:= $(patsubst $(SRC_ROOT)%,$(BUILD_ROOT)%,$(SRC_DIRS))
 
-# Default target
-all: $(TARGET)
+COBJS				:= $(patsubst $(SRC_ROOT)/%.c,$(BUILD_ROOT)/%.o,$(CSRC))
+CXXOBJS				:= $(patsubst $(SRC_ROOT)/%.cpp,$(BUILD_ROOT)/%.o,$(CXXSRC))
 
-# Link
+OBJS				:= $(COBJS) $(CXXOBJS)
+
+DEPENDANCY_FILES := $(OBJS:.o=.d)
+-include $(DEPENDANCY_FILES)
+
+LOG_MSG		= @echo "$(1)" && echo "[$$( date '+%FT%H:%M:%S.%6N%:z' )]"
+
 $(TARGET): $(OBJS)
+	$(call LOG_MSG,linking: $@)
 	$(CXX) $(OBJS) -o $@
 
-# Compile
-$(BUILD_SUBDIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_SUBDIR)
-	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
+$(BUILD_SUBDIRS):
+	mkdir -p $(BUILD_SUBDIRS)
 
-# Build directory
-$(BUILD_SUBDIR):
-	mkdir -p $(BUILD_SUBDIR)
+$(COBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.c | $(BUILD_SUBDIRS)
+	$(call LOG_MSG,compiling: $@)
+	$(CC) $(CFLAGS) -c $^ -o $@
 
-# Run
-run: $(TARGET)
-	./$(TARGET)
+$(CXXOBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.cpp | $(BUILD_SUBDIRS)
+	$(call LOG_MSG,compiling: $@)
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-# Debug shortcut
 debug:
-	$(MAKE) BUILD=debug
+	$(MAKE) -k BUILD=debug
 
-# Release shortcut
 release:
-	$(MAKE) BUILD=release
+	$(MAKE) -k BUILD=release
 
-# Clean
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	$(call LOG_MSG,$(CSRC))
+	$(call LOG_MSG,$(BUILD_SUBDIRS))
+	rm -rf build
 
-# Include dependencies
--include $(DEPS)
-
-.PHONY: all clean run debug release
+.PHONY: debug release clean

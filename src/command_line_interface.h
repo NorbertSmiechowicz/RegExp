@@ -2,38 +2,36 @@
 #ifndef _CLIPARSER_H_
 # define _CLIPARSER_H_
 
-# ifndef _INTRO_H_
-#  include "intro.h"
-# endif//_INTRO_H_
+# ifndef _CONCEPTS_H_
+#  include "concepts.h"
+# endif//_CONCEPTS_H_
 
-# ifndef _STREAM_H_
-#  include "stream.h"
-# endif//_STREAM_H_
+# ifndef _STRING_TYPES_H_
+#  include "string_types.h"
+# endif//_STRING_TYPES_H_
 
 # include <list>
 # include <string>
 # include <string_view>
 
 /**
-    User provided keys MUST NOT include white characters.
-    All conesecutive rules except consecutive terminal tokens MUST have at least one white token separating them.
-    Consecutive terminal tokens are to be lexed as explicitly specified.
     Short key groups are resolved from left to right by the longest valid short key at point.
-    Value sequence is bound to the earliest previous key.
+    All values are bound to the rightmost preceeding key or the program itself in case no key was specified.
+    All rules allow any numer of preceeding whitespace.
 
-    00. command_line            :=  (  long_key  |  short_key_group  )  value*  )*
+    00. command_line            :=  (  long_key  |  short_key_group  |  value  )*
 
     01. long_key                :=  <hyphen>  <hyphen>  [[  <!white>+  ]]
 
     02. short_key_group         :=  <hyphen>  [[ !(  <white>  |  <hyphen>  )  <!white>*  ]]
 
-    03. value                   :=  unquoted_value  |  singly_quoted_value  |  doubly_quoted_value
+    03. value                   :=  singly_quoted_value  |  doubly_quoted_value  |  unquoted_value
 
-    04. unquoted_value          :=  [[ !(  <white>  |  <hyphen>  )  !<white>*  ]]
+    04. singly_quoted_value     :=  <single_quotes> [[  !<single_quotes>* ]]  <single_quotes>
 
-    05. singly_quoted_value     :=  <single_quotes> [[  !<single_quotes>* ]]  <single_quotes>
+    05. doubly_quoted_value     :=  <double_quotes> [[  !<double_quotes>* ]]  <double_quotes>
 
-    06. doubly_quoted_value     :=  <double_quotes> [[  !<double_quotes>* ]]  <double_quotes>
+    06. unquoted_value          :=  [[ !(  <white>  |  <hyphen>  )  !<white>*  ]]
 */
 
 ////////////////////////////////////////////////
@@ -57,12 +55,10 @@ using CliLexTokenList = std::list< CliLexToken>;
 class CommandLineArgumentLexer
 {
 public:
-    CommandLineArgumentLexer( int argc, char * argv[]);
-
-    bool lex( CliLexTokenList & outTokens);
+    bool lex( CliLexTokenList & outTokens, char const * commandLine, unsigned long lineLength);
 
 private:
-    void skip_white();
+    bool skip_white();
 
     bool peek_terminal( unsigned long terminalTokenId);
     bool try_terminal( unsigned long terminalTokenId);
@@ -76,8 +72,7 @@ private:
     bool try_syntax_singly_quoted_value();
     bool try_syntax_doubly_quoted_value();
 
-    std::string         m_CommandLine;
-    StreamView          m_CommandLineStream;
+    StringStream        m_CommandLineStream;
     CliLexTokenList     m_TokenList;
 };
 
@@ -109,6 +104,7 @@ private:
     CliLexTokenList     m_LexTokenList;
     unsigned long       m_LastKey;
 };
+
 
 template< typename TypeT, typename IdT> requires
     non_narrowing_cast< TypeT, long> &&

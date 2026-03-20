@@ -3,10 +3,12 @@
 # Private Files
 .*
 
-# Backup Files
+build
+
+# Emacs Backup Files
 *~
 
-# Prerequisites
+# Dependancy files
 *.d
 
 # Compiled Object files

@@ -1,15 +1,8 @@
 
-#ifndef _INTRO_H_
-# define _INTRO_H_
+#ifndef _CONCEPTS_H_
+# define _CONCEPTS_H_
 
 # include <concepts>
-
-////////////////////////////////////////////////
-// Common Macros
-
-#define RC( T, X) reinterpret_cast< T>( X)
-#define SC( T, X) static_cast< T>( X)
-#define CC( T, X) const_cast< T>( X)
 
 ////////////////////////////////////////////////
 //  Concepts
@@ -21,4 +14,4 @@ concept non_narrowing_cast =
     (sizeof( ToT) >= sizeof( FromT))
 );
 
-#endif//_INTRO_H_
+#endif//_CONCEPTS_H_

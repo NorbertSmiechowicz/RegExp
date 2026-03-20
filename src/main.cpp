@@ -1,5 +1,4 @@
 
-#include "intro.h"
 #include "command_line_interface.h"
 #include "forward_string_index.h"
 
@@ -7,9 +6,6 @@
 #include <vector>
 
 ////////////////////////////////////////////////
-
-
-
 
 enum class CliArgType
 {
