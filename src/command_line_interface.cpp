@@ -10,7 +10,6 @@
     TOKEN_ID( SingleQuotes)         TOKEN_CHARS( "'")\
     TOKEN_ID( DoubleQuotes)         TOKEN_CHARS( "\"")\
     TOKEN_ID( Hyphen)               TOKEN_CHARS( "-")\
-    TOKEN_ID( Equals)               TOKEN_CHARS( "=")
 
 #define TOKEN_ID( X) TerminalTokenId_##X,
 #define TOKEN_CHARS( X)
@@ -97,10 +96,10 @@ CommandLineArgumentLexer::try_syntax_command_line()
     {
         chckpt.update();
 
-        if( ! try_syntax_short_argument())
+        if( ! try_syntax_long_argument())
             chckpt.rollback();
 
-        if( ! try_syntax_long_argument())
+        if( ! try_syntax_short_argument())
             chckpt.rollback();
 
         if( ! try_syntax_value())

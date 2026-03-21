@@ -38,32 +38,27 @@ OBJS				:= $(COBJS) $(CXXOBJS)
 DEPENDANCY_FILES := $(OBJS:.o=.d)
 -include $(DEPENDANCY_FILES)
 
-LOG_MSG		= @echo "$(1)" && echo "[$$( date '+%FT%H:%M:%S.%6N%:z' )]"
+# LOG_MSG		= @echo "[$$( date '+%FT%H:%M:%S.%6N%:z' )] $(1)"
+
+debug:
+	$(MAKE) $(TARGET) -k -j8 BUILD=debug
+
+release:
+	$(MAKE) $(TARGET) -k -j8 BUILD=release
 
 $(TARGET): $(OBJS)
-	$(call LOG_MSG,linking: $@)
 	$(CXX) $(OBJS) -o $@
 
 $(BUILD_SUBDIRS):
 	mkdir -p $(BUILD_SUBDIRS)
 
 $(COBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.c | $(BUILD_SUBDIRS)
-	$(call LOG_MSG,compiling: $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(CXXOBJS): $(BUILD_ROOT)/%.o : $(SRC_ROOT)/%.cpp | $(BUILD_SUBDIRS)
-	$(call LOG_MSG,compiling: $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-debug:
-	$(MAKE) -k BUILD=debug
-
-release:
-	$(MAKE) -k BUILD=release
-
 clean:
-	$(call LOG_MSG,$(CSRC))
-	$(call LOG_MSG,$(BUILD_SUBDIRS))
 	rm -rf build
 
 .PHONY: debug release clean
