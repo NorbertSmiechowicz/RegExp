@@ -41,14 +41,14 @@ static TerminalCharSet TerminalTokenArray[]
 ////////////////////////////////////////////////
 
 bool
-CommandLineArgumentLexer::lex( CliLexTokenList & outTokens, char const * commandLine, unsigned long lineLength)
+CommandLineArgumentLexer::lex( CliLexTokenList & outTokens, std::string_view commandLine)
 {
-    m_CommandLineStream = StringStream{ commandLine, lineLength};
+    m_CommandLineStream = StringStream{ commandLine};
 
     if( ! try_syntax_command_line())
         return false;
 
-    outTokens = std::exchange( m_TokenList, CliLexTokenList());
+    outTokens = std::exchange( m_TokenList, CliLexTokenList{});
     return true;
 };
 
