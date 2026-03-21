@@ -48,9 +48,6 @@ int main( int argc, char* argv[])
     if( ! argParser.parse( argDict))
         printf( "Parsing command line failed.\n");
 
-    if( ! argDict.get_process_value())
-        printf( "Process has no arguments.\n");
-
     if( argDict.get_key_value( CliArgId::Help))
         printf( "Help was invoked.\n");
 

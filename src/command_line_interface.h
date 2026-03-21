@@ -1,4 +1,22 @@
 
+/*
+    Simple Command Line Interface Argument Parser
+    Copyright (C) 2026 Norbert Śmiechowicz
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #ifndef _CLIPARSER_H_
 # define _CLIPARSER_H_
 
@@ -64,7 +82,9 @@ using CliLexTokenList = std::list< CliLexToken>;
 class CommandLineArgumentLexer
 {
 public:
-    bool lex( CliLexTokenList & outTokens, std::string_view commandLine);
+    CommandLineArgumentLexer( std::string_view commandLine);
+
+    bool lex( CliLexTokenList & outTokens);
 
 private:
     bool skip_white();
@@ -98,11 +118,11 @@ public:
 protected:
     CommandLineArgumentTemplateBase( InternalArgIdT id) : m_Id{ id} {};
 
-    InternalArgIdT      m_Id;
     std::string_view    m_ShortKey;
     std::string_view    m_LongKey;
     std::string_view    m_ShortHelp;
     std::string_view    m_VerboseHelp;
+    InternalArgIdT      m_Id;
 };
 
 ////////////////////////////////////////////////
@@ -113,18 +133,21 @@ class CommandLineArgumentDictBase
 protected:
     friend class CommandLineArgumentParserBase;
 
-    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
     using ValueT = std::list< std::string>;
+    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
     using ContainerT = std::unordered_map< unsigned long, ValueT>;
 
 public:
-    ValueT *            get_process_value();
+    ValueT const &  get_process_value();
 
 protected:
-    ValueT *            base_get_key_value( InternalArgIdT argId);
-    void                add_value( InternalArgIdT argId, std::string_view value);
+    ValueT *        base_get_key_value( InternalArgIdT argId);
+    void            add_empty_key( InternalArgIdT argId);
+    void            add_key_value( InternalArgIdT argId, std::string_view value);
+    void            add_process_value( std::string_view value);
 
-    ContainerT          m_Data;
+    ContainerT      m_Dict;
+    ValueT          m_ProcessValue;
 };
 
 ////////////////////////////////////////////////
@@ -139,19 +162,26 @@ protected:
     CommandLineArgumentParserBase( int argc, char * argv[]);
 
     bool base_parse( CommandLineArgumentDictBase & outDict);
+    bool lex();
 
     bool load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
+    bool register_lookup( KeyMap & map, std::string_view key, InternalArgIdT argId);
     void clear_key_lookup_tables();
 
-    bool parse_short_key_group( std::string_view keyGroup);
-    bool find_short_key( InternalArgIdT & outArgId, std::string_view key);
-    bool find_long_key( InternalArgIdT & outArgId, std::string_view key);
+    bool try_parse_long_key( std::string_view key);
+    bool try_parse_short_key_group( std::string_view keyGroup);
+    bool try_parse_value( std::string_view value);
 
-    std::string                     m_CommandLine;
+    bool lookup_short_key( InternalArgIdT & outArgId, std::string_view key);
+    bool lookup_long_key( InternalArgIdT & outArgId, std::string_view key);
+
+    int                             m_ArgCount;
+    char **                         m_ArgValues;
     KeyMap                          m_LongKeyLookup;
     KeyMap                          m_ShortKeyLookup;
     CliLexTokenList                 m_LexTokenList;
     std::optional< InternalArgIdT>  m_LastKey;
+    CommandLineArgumentDictBase *   m_BuildDict;
 };
 
 ////////////////////////////////////////////////
