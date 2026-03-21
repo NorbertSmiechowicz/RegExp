@@ -7,7 +7,7 @@
 # endif//_CONCEPTS_H_
 
 # ifndef _STRING_TYPES_H_
-#  include "string_types.h"
+#  include "string_stream.h"
 # endif//_STRING_TYPES_H_
 
 # include <list>

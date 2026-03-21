@@ -44,7 +44,7 @@ static TerminalCharSet TerminalTokenArray[]
 bool
 CommandLineArgumentLexer::lex( CliLexTokenList & outTokens, char const * commandLine, unsigned long lineLength)
 {
-    m_CommandLineStream = StringStream_create_2( commandLine, lineLength);
+    m_CommandLineStream = StringStream{ commandLine, lineLength};
 
     if( ! try_syntax_command_line())
         return false;
@@ -61,7 +61,7 @@ CommandLineArgumentLexer::skip_white()
     while( peek_terminal( TerminalTokenId_White))
         whiteCount ++;
 
-    return StringStream_skip_char_count( &m_CommandLineStream, whiteCount);
+    return m_CommandLineStream.skip_char_count( whiteCount);
 };
 
 bool
@@ -69,7 +69,7 @@ CommandLineArgumentLexer::peek_terminal( unsigned long terminalTokenId)
 {
     char currentChar;
 
-    if( StringStream_peek_char( &m_CommandLineStream, &currentChar))
+    if( m_CommandLineStream.peek_char( currentChar))
         return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
 
     return false;
@@ -80,7 +80,7 @@ CommandLineArgumentLexer::try_terminal( unsigned long terminalTokenId)
 {
     char currentChar;
 
-    if( StringStream_get_char( &m_CommandLineStream, &currentChar))
+    if( m_CommandLineStream.get_char( currentChar))
         return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
 
     return false;
@@ -91,17 +91,17 @@ CommandLineArgumentLexer::try_syntax_command_line()
 {
     skip_white();
 
-    StringStreamCheckpoint chckpt = StringStream_set_checkpoint( &m_CommandLineStream);
+    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
 
     while( true)
     {
-        StringStreamCheckpoint_update( &chckpt);
+        chckpt.update();
 
         if( ! try_syntax_short_argument())
-            StringStreamCheckpoint_rollback( &chckpt);
+            chckpt.rollback();
 
         if( ! try_syntax_long_argument())
-            StringStreamCheckpoint_rollback( &chckpt);
+            chckpt.rollback();
 
         if( ! try_syntax_value())
             return true;
@@ -122,19 +122,19 @@ CommandLineArgumentLexer::try_syntax_long_argument()
     if( peek_terminal( TerminalTokenId_White))
         return false;
 
-    StringStreamCheckpoint chckpt = StringStream_set_checkpoint( &m_CommandLineStream);
+    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
 
     char character = 0;
     std::string capture;
 
     while( ! peek_terminal( TerminalTokenId_White))
-        if( StringStream_get_char( &m_CommandLineStream, &character))
+        if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
 
     m_TokenList.emplace_back( CliLexTokenId::LongKey, std::move( capture));
-    return StringStreamCheckpoint_update( &chckpt);
+    return chckpt.update();
 };
 
 bool
@@ -148,19 +148,19 @@ CommandLineArgumentLexer::try_syntax_short_argument()
     if( peek_terminal( TerminalTokenId_Hyphen) || peek_terminal( TerminalTokenId_White))
         return false;
 
-    StringStreamCheckpoint chckpt = StringStream_set_checkpoint( &m_CommandLineStream);
+    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
 
     char character = 0;
     std::string capture;
 
     while( ! peek_terminal( TerminalTokenId_White))
-        if( StringStream_get_char( &m_CommandLineStream, &character))
+        if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
 
     m_TokenList.emplace_back( CliLexTokenId::ShortKeyGroup, std::move( capture));
-    return StringStreamCheckpoint_update( &chckpt);
+    return chckpt.update();
 };
 
 bool
@@ -168,20 +168,20 @@ CommandLineArgumentLexer::try_syntax_value()
 {
     skip_white();
 
-    StringStreamCheckpoint chckpt = StringStream_set_checkpoint( &m_CommandLineStream);
+    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
 
     if( try_syntax_singly_quoted_value())
-        return StringStreamCheckpoint_update( &chckpt);
+        return chckpt.update();
 
-    StringStreamCheckpoint_rollback( &chckpt);
+    chckpt.rollback();
 
     if( try_syntax_doubly_quoted_value())
-        return StringStreamCheckpoint_update( &chckpt);
+        return chckpt.update();
 
-    StringStreamCheckpoint_rollback( &chckpt);
+    chckpt.rollback();
 
     if( try_syntax_unquoted_value())
-        return StringStreamCheckpoint_update( &chckpt);
+        return chckpt.update();
 
     return false;
 };
@@ -198,7 +198,7 @@ CommandLineArgumentLexer::try_syntax_unquoted_value()
     std::string capture;
 
     while( ! peek_terminal( TerminalTokenId_White))
-        if( StringStream_get_char( &m_CommandLineStream, &character))
+        if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
@@ -219,7 +219,7 @@ CommandLineArgumentLexer::try_syntax_singly_quoted_value()
     std::string capture;
 
     while( ! peek_terminal( TerminalTokenId_SingleQuotes))
-        if( StringStream_get_char( &m_CommandLineStream, &character))
+        if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
@@ -243,7 +243,7 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
     std::string capture;
 
     while( ! peek_terminal( TerminalTokenId_DoubleQuotes))
-        if( StringStream_get_char( &m_CommandLineStream, &character))
+        if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;

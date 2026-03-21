@@ -16,9 +16,9 @@
 #  define CC( T, X) (T)(X)
 # endif
 
-# if __cplusplus >= 202300L
+# if __cplusplus >= 201700L
 #  define NODISCARD [[nodiscard]]
-# elif __STDC_VERSION__ >= 201700L
+# elif __STDC_VERSION__ >= 202300L
 #  define NODISCARD [[nodiscard]]
 # else
 #  define NODISCARD
