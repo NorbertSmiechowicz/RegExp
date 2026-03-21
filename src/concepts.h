@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////
 //  Concepts
 
-template< typename FromT, typename ToT>
+template< typename ToT, typename FromT>
 concept non_narrowing_cast =
 (
     requires { static_cast< ToT>( std::declval< FromT>()); } &&

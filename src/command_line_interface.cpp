@@ -2,6 +2,7 @@
 #include "command_line_interface.h"
 
 #include <string.h>
+#include <string_view>
 #include <utility>
 
 ////////////////////////////////////////////////
@@ -38,7 +39,9 @@ static TerminalCharSet TerminalTokenArray[]
 #undef TOKEN_ID
 
 #undef TerminalTokenList
+
 ////////////////////////////////////////////////
+// CommandLineArgumentLexer - definition
 
 bool
 CommandLineArgumentLexer::lex( CliLexTokenList & outTokens, std::string_view commandLine)
@@ -50,7 +53,7 @@ CommandLineArgumentLexer::lex( CliLexTokenList & outTokens, std::string_view com
 
     outTokens = std::exchange( m_TokenList, CliLexTokenList{});
     return true;
-};
+}
 
 bool
 CommandLineArgumentLexer::skip_white()
@@ -61,7 +64,7 @@ CommandLineArgumentLexer::skip_white()
         whiteCount ++;
 
     return m_CommandLineStream.skip_char_count( whiteCount);
-};
+}
 
 bool
 CommandLineArgumentLexer::peek_terminal( unsigned long terminalTokenId)
@@ -72,7 +75,7 @@ CommandLineArgumentLexer::peek_terminal( unsigned long terminalTokenId)
         return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
 
     return false;
-};
+}
 
 bool
 CommandLineArgumentLexer::try_terminal( unsigned long terminalTokenId)
@@ -83,7 +86,7 @@ CommandLineArgumentLexer::try_terminal( unsigned long terminalTokenId)
         return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
 
     return false;
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_command_line()
@@ -104,8 +107,8 @@ CommandLineArgumentLexer::try_syntax_command_line()
 
         if( ! try_syntax_value())
             return true;
-    };
-};
+    }
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_long_argument()
@@ -134,7 +137,7 @@ CommandLineArgumentLexer::try_syntax_long_argument()
 
     m_TokenList.emplace_back( CliLexTokenId::LongKey, std::move( capture));
     return chckpt.update();
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_short_argument()
@@ -160,7 +163,7 @@ CommandLineArgumentLexer::try_syntax_short_argument()
 
     m_TokenList.emplace_back( CliLexTokenId::ShortKeyGroup, std::move( capture));
     return chckpt.update();
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_value()
@@ -183,7 +186,7 @@ CommandLineArgumentLexer::try_syntax_value()
         return chckpt.update();
 
     return false;
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_unquoted_value()
@@ -204,7 +207,7 @@ CommandLineArgumentLexer::try_syntax_unquoted_value()
 
     m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
     return true;
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_singly_quoted_value()
@@ -228,7 +231,7 @@ CommandLineArgumentLexer::try_syntax_singly_quoted_value()
 
     m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
     return true;
-};
+}
 
 bool
 CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
@@ -252,4 +255,53 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
 
     m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
     return true;
+}
+
+////////////////////////////////////////////////
+// CommandLineArgumentDictBase - definition
+
+CommandLineArgumentDictBase::ValueT *
+CommandLineArgumentDictBase::get_process_value()
+{
+    return nullptr;
+}
+
+CommandLineArgumentDictBase::ValueT *
+CommandLineArgumentDictBase::base_get_key_value( InternalArgIdT argId)
+{
+    return nullptr;
+}
+
+void
+CommandLineArgumentDictBase::add_value( InternalArgIdT argId, std::string_view value)
+{
+}
+
+
+////////////////////////////////////////////////
+//  CommandLineArgumentParserBase - definition
+
+CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char * argv[])
+:
+    m_CommandLine{ ""}
+{
+    for( int argi = 1; argi < argc; argi ++)
+        m_CommandLine += argv[ argi];
+}
+
+bool
+CommandLineArgumentParserBase::base_parse( CommandLineArgumentDictBase & outDict)
+{
+    return false;
 };
+
+bool
+CommandLineArgumentParserBase::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
+{
+    return false;
+}
+
+void
+CommandLineArgumentParserBase::clear_key_lookup_tables()
+{
+}

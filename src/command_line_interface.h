@@ -19,6 +19,7 @@
 # include <string>
 # include <string_view>
 # include <ranges>
+# include <optional>
 
 /**
     Short key groups are resolved from left to right by the longest valid short key at point.
@@ -53,10 +54,12 @@ struct CliLexToken
 {
     CliLexTokenId   Id;
     std::string     Text;
-
 };
 
 using CliLexTokenList = std::list< CliLexToken>;
+
+////////////////////////////////////////////////
+//  CommandLineArgumentLexer - declaration
 
 class CommandLineArgumentLexer
 {
@@ -82,83 +85,139 @@ private:
     CliLexTokenList     m_TokenList;
 };
 
-struct CommandLineArgumentTemplateBase
-{
-    unsigned long       Type;
-    unsigned long       Id;
-    std::string_view    ShortKey;
-    std::string_view    LongKey;
-    std::string_view    ShortHelp;
-    std::string_view    VerboseHelp;
-};
+////////////////////////////////////////////////
+//  CommandLineArgumentTemplateBase - declaration
 
-class CommandLineArgumentDictBase
+class CommandLineArgumentTemplateBase
 {
     friend class CommandLineArgumentParserBase;
 
 public:
-    void * get_value( unsigned long argId);
+    using InternalArgIdT = unsigned long;
 
-private:
-    void add_value( unsigned long argId, std::string_view value);
+protected:
+    CommandLineArgumentTemplateBase( InternalArgIdT id) : m_Id{ id} {};
 
-    using ValueT = std::list< std::string_view>;
+    InternalArgIdT      m_Id;
+    std::string_view    m_ShortKey;
+    std::string_view    m_LongKey;
+    std::string_view    m_ShortHelp;
+    std::string_view    m_VerboseHelp;
+};
+
+////////////////////////////////////////////////
+//  CommandLineArgumentDictBase - declaration
+
+class CommandLineArgumentDictBase
+{
+protected:
+    friend class CommandLineArgumentParserBase;
+
+    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
+    using ValueT = std::list< std::string>;
     using ContainerT = std::unordered_map< unsigned long, ValueT>;
 
-    ContainerT m_Data;
+public:
+    ValueT *            get_process_value();
+
+protected:
+    ValueT *            base_get_key_value( InternalArgIdT argId);
+    void                add_value( InternalArgIdT argId, std::string_view value);
+
+    ContainerT          m_Data;
 };
+
+////////////////////////////////////////////////
+//  CommandLineArgumentParserBase - declaration
 
 class CommandLineArgumentParserBase
 {
-    using KeyMap = std::unordered_map< std::string_view, unsigned long>;
+protected:
+    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
+    using KeyMap = std::unordered_map< std::string_view, InternalArgIdT>;
 
-public:
     CommandLineArgumentParserBase( int argc, char * argv[]);
 
-    template< std::ranges::view CliArgTemplateRange> requires
-        std::derived_from< std::ranges::range_value_t< CliArgTemplateRange>, CommandLineArgumentTemplateBase>
-    bool load_argument_templates( CliArgTemplateRange && argTemplates)
+    bool base_parse( CommandLineArgumentDictBase & outDict);
+
+    bool load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
+    void clear_key_lookup_tables();
+
+    bool parse_short_key_group( std::string_view keyGroup);
+    bool find_short_key( InternalArgIdT & outArgId, std::string_view key);
+    bool find_long_key( InternalArgIdT & outArgId, std::string_view key);
+
+    std::string                     m_CommandLine;
+    KeyMap                          m_LongKeyLookup;
+    KeyMap                          m_ShortKeyLookup;
+    CliLexTokenList                 m_LexTokenList;
+    std::optional< InternalArgIdT>  m_LastKey;
+};
+
+////////////////////////////////////////////////
+//  Kraina STL'a
+
+template< typename ArgTypeT, typename ArgIdT> requires
+    non_narrowing_cast< CommandLineArgumentTemplateBase::InternalArgIdT, ArgIdT>
+class CommandLineArgumentTemplate : public CommandLineArgumentTemplateBase
+{
+public:
+    using index_type = ArgIdT;
+
+    CommandLineArgumentTemplate( ArgTypeT type, ArgIdT id)
+    :
+        CommandLineArgumentTemplateBase( static_cast< InternalArgIdT>( id)),
+        m_ArgType{ type}
+    {};
+
+protected:
+    ArgTypeT m_ArgType;
+};
+
+template< typename ArgIdT> requires
+    non_narrowing_cast< CommandLineArgumentTemplateBase::InternalArgIdT, ArgIdT>
+class CommandLineArgumentDict : public CommandLineArgumentDictBase
+{
+public:
+    using index_type = ArgIdT;
+
+    ValueT *
+    get_key_value( ArgIdT argId)
+    {   return base_get_key_value( static_cast< InternalArgIdT>( argId)); };
+};
+
+template< class ArgTemplateT> requires
+    std::derived_from< ArgTemplateT, CommandLineArgumentTemplateBase>
+class CommandLineArgumentParser : public CommandLineArgumentParserBase
+{
+public:
+
+    CommandLineArgumentParser( int argc, char * argv[])
+    :
+        CommandLineArgumentParserBase( argc, argv)
+    {};
+
+    template< std::ranges::view CliArgTemplateView> requires
+        std::is_same_v< std::ranges::range_value_t< CliArgTemplateView>, ArgTemplateT>
+    bool
+    load_argument_templates( CliArgTemplateView const argTemplates)
     {
         clear_key_lookup_tables();
 
         bool allOk = true;
 
-        for( CommandLineArgumentTemplateBase & argt : argTemplates)
-            allOk &= load_argument_template( argt);
+        for( ArgTemplateT const & argt : argTemplates)
+            allOk &= load_argument_template( static_cast< CommandLineArgumentTemplateBase const &>( argt));
 
         return allOk;
     };
 
-    bool parse( /* argument dict */);
-
-private:
-    bool load_argument_template( CommandLineArgumentTemplateBase & argTemplate);
-    void clear_key_lookup_tables();
-
-    bool parse_short_key_group( std::string_view keyGroup);
-    bool find_short_key( unsigned long & outArgId, std::string_view key);
-    bool find_long_key( unsigned long & outArgId, std::string_view key);
-
-    int                 m_Argc;
-    char **             m_Argv;
-    CliLexTokenList     m_LexTokenList;
-    unsigned long       m_LastKey;
-    KeyMap              m_ShortKeyLookup;
-    KeyMap              m_LongKeyLookup;
-};
-
-
-template< typename TypeT, typename IdT> requires
-    non_narrowing_cast< TypeT, long> &&
-    non_narrowing_cast< IdT, long>
-struct CommandLineArgumentTemplate : CommandLineArgumentTemplateBase
-{
-    using index_type = IdT;
-};
-
-template< typename T>
-class CommandLineArgumentParser
-{
+    template< typename ArgDictT> requires
+        std::derived_from< ArgDictT, CommandLineArgumentDictBase> &&
+        std::is_same_v< typename ArgDictT::index_type, typename ArgTemplateT::index_type>
+    bool
+    parse( ArgDictT & outDict)
+    {   return base_parse( outDict); };
 };
 
 #endif//_CLIPARSER_H_

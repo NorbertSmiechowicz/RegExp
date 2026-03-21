@@ -1,7 +1,7 @@
 
 #include "command_line_interface.h"
-#include "forward_string_index.h"
 
+#include <string>
 #include <memory>
 #include <vector>
 
@@ -15,30 +15,44 @@ enum class CliArgType
 
 enum class CliArgId
 {
+    Help,
+    File
 };
 
 using CliArgTemplate = CommandLineArgumentTemplate< CliArgType, CliArgId>;
+using CliArgDict = CommandLineArgumentDict< CliArgId>;
+using CliArgParser = CommandLineArgumentParser< CliArgTemplate>;
 
-
-int main( int /*argc*/, char* /*argv*/[])
+int main( int argc, char* argv[])
 {
     ////////////////////////////////////////////////
 
-    ForwardStringIndexFactory< char> testFactory;
-
-    std::vector< char const *> testOpt{ "a", "aa", "ab", "baaa", "baab", "baa", "bb", "bb", "cccBcOcc", "cccBccccc", "cccDccc"};
-
-    for( char const * opt : testOpt)
+    std::vector< CliArgTemplate> argTemplates
     {
-        if( ! testFactory.add( opt, CC( char *, opt)))
-            printf( "fail: %s\n", opt);
-    }
+        CliArgTemplate
+        {
+            CliArgType::Flag, CliArgId::Help
+        },
+        CliArgTemplate
+        {
+            CliArgType::Sequence, CliArgId::File
+        }
+    };
 
-    std::unique_ptr< ForwardStringIndex< char>> testIdx{ testFactory.emit()};
+    CliArgParser argParser{ argc, argv};
+    CliArgDict argDict;
 
-    printf( "%s\n", testIdx->find( "cccBcOcc"));
-    printf( "%s\n", testIdx->find( "cccBccccc"));
-    printf( "%s\n", testIdx->find( "cccDccc"));
+    if( ! argParser.load_argument_templates( std::views::all( argTemplates)))
+        printf( "Loading command line argument definitions failed.\n");
+
+    if( ! argParser.parse( argDict))
+        printf( "Parsing command line failed.\n");
+
+    if( ! argDict.get_process_value())
+        printf( "Process has no arguments.\n");
+
+    if( argDict.get_key_value( CliArgId::Help))
+        printf( "Help was invoked.\n");
 
     return 0;
 }
