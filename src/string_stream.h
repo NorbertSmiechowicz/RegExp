@@ -22,6 +22,7 @@ public:
     StringStream( char const * text, unsigned long length);
     StringStream( char const * text);
 
+    NODISCARD bool          is_exhausted();
     NODISCARD bool          peek_char( char & outChar);
     NODISCARD bool          get_char( char & outChar);
     NODISCARD bool          peek_string( std::string_view & outString, unsigned long length);

@@ -81,12 +81,12 @@ CommandLineArgumentLexer::lex( CliLexTokenList & outTokens)
 bool
 CommandLineArgumentLexer::skip_white()
 {
-    unsigned long whiteCount = 0;
+    bool textContinues = true;
 
     while( peek_terminal( TerminalTokenId_White))
-        whiteCount ++;
+        textContinues &= m_CommandLineStream.skip_char_count( 1);
 
-    return m_CommandLineStream.skip_char_count( whiteCount);
+    return textContinues;
 }
 
 bool
@@ -118,23 +118,29 @@ CommandLineArgumentLexer::try_syntax_command_line()
 
     StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
 
-    while( true)
+    while( ! m_CommandLineStream.is_exhausted())
     {
         chckpt.update();
 
-        if( ! try_syntax_long_argument())
+        if( ! try_syntax_long_key())
             chckpt.rollback();
+        else
+            continue;
 
-        if( ! try_syntax_short_argument())
+        if( ! try_syntax_short_key())
             chckpt.rollback();
+        else
+            continue;
 
         if( ! try_syntax_value())
-            return true;
+            return false;
     }
+
+    return true;
 }
 
 bool
-CommandLineArgumentLexer::try_syntax_long_argument()
+CommandLineArgumentLexer::try_syntax_long_key()
 {
     skip_white();
 
@@ -147,8 +153,6 @@ CommandLineArgumentLexer::try_syntax_long_argument()
     if( peek_terminal( TerminalTokenId_White))
         return false;
 
-    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
-
     char character = 0;
     std::string capture;
 
@@ -156,14 +160,14 @@ CommandLineArgumentLexer::try_syntax_long_argument()
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
-            return false;
+            break;
 
     m_TokenList.emplace_back( CliLexTokenId::LongKey, std::move( capture));
-    return chckpt.update();
+    return true;
 }
 
 bool
-CommandLineArgumentLexer::try_syntax_short_argument()
+CommandLineArgumentLexer::try_syntax_short_key()
 {
     skip_white();
 
@@ -173,8 +177,6 @@ CommandLineArgumentLexer::try_syntax_short_argument()
     if( peek_terminal( TerminalTokenId_Hyphen) || peek_terminal( TerminalTokenId_White))
         return false;
 
-    StringStreamCheckpoint chckpt = m_CommandLineStream.set_checkpoint();
-
     char character = 0;
     std::string capture;
 
@@ -182,10 +184,10 @@ CommandLineArgumentLexer::try_syntax_short_argument()
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
-            return false;
+            break;
 
     m_TokenList.emplace_back( CliLexTokenId::ShortKeyGroup, std::move( capture));
-    return chckpt.update();
+    return true;
 }
 
 bool
@@ -208,6 +210,7 @@ CommandLineArgumentLexer::try_syntax_value()
     if( try_syntax_unquoted_value())
         return chckpt.update();
 
+    chckpt.update();
     return false;
 }
 
@@ -226,7 +229,7 @@ CommandLineArgumentLexer::try_syntax_unquoted_value()
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
-            return false;
+            break;
 
     m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
     return true;
@@ -283,31 +286,49 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
 ////////////////////////////////////////////////
 // CommandLineArgumentDictBase - definition
 
-CommandLineArgumentDictBase::ValueT const &
+CommandLineArgumentDictBase::iterator
+CommandLineArgumentDictBase::end()
+{
+    return nullptr;
+}
+
+CommandLineArgumentDictBase::value_type const &
 CommandLineArgumentDictBase::get_process_value()
 {
     return m_ProcessValue;
 }
 
-CommandLineArgumentDictBase::ValueT *
+CommandLineArgumentDictBase::iterator
 CommandLineArgumentDictBase::base_get_key_value( InternalArgIdT argId)
 {
-    return nullptr;
+    ContainerT::iterator entry = m_Dict.find( argId);
+
+    return entry != m_Dict.end() ? &entry->second : nullptr;
 }
 
-void
+CommandLineArgumentDictBase::value_type &
 CommandLineArgumentDictBase::add_empty_key( InternalArgIdT argId)
 {
+    ContainerT::iterator entry = m_Dict.find( argId);
+
+    if( entry == m_Dict.end())
+        entry = m_Dict.emplace( argId, value_type{}).first;
+
+    return entry->second;
 }
 
 void
 CommandLineArgumentDictBase::add_key_value( InternalArgIdT argId, std::string_view value)
 {
+    value_type & entry = add_empty_key( argId);
+
+    entry.emplace_back( value);
 }
 
 void
 CommandLineArgumentDictBase::add_process_value( std::string_view value)
 {
+    m_ProcessValue.emplace_back( value);
 }
 
 ////////////////////////////////////////////////
@@ -416,6 +437,21 @@ CommandLineArgumentParserBase::try_parse_long_key( std::string_view longKey)
         return true;
     }
 
+    m_LastKey.reset();
+    return false;
+}
+
+bool
+CommandLineArgumentParserBase::try_parse_short_key( std::string_view shortKey)
+{
+    if( InternalArgIdT argId; lookup_short_key( argId, shortKey))
+    {
+        m_BuildDict->add_empty_key( argId);
+        m_LastKey = argId;
+        return true;
+    }
+
+    m_LastKey.reset();
     return false;
 }
 
@@ -424,46 +460,40 @@ CommandLineArgumentParserBase::try_parse_short_key_group( std::string_view short
 {
     StringStream ss{ shortKeyGroup};
     std::string_view potentialKey{};
-    InternalArgIdT argId;
+    InternalArgIdT argId{};
+    bool allOk = true;
 
     unsigned long keyLen{ 1};
 
-    // Do refaktoryzacji, ugh...
-
     while( ss.peek_string( potentialKey, keyLen))
-    {
-        if( lookup_short_key( argId, potentialKey))
-        {
-            keyLen ++;
-        }
-        else
+        if( ! lookup_short_key( argId, potentialKey))
         {
             keyLen --;
 
             if( ss.get_string( potentialKey, keyLen))
-                if( lookup_short_key( argId, potentialKey))
-                {
-                    m_BuildDict->add_empty_key( argId);
-                    m_LastKey = argId;
-                }
+                allOk &= try_parse_short_key( potentialKey);
 
             keyLen = 1;
         }
-    }
-
-    if( ss.get_string( potentialKey, keyLen))
-        if( lookup_short_key( argId, potentialKey))
+        else
         {
-            m_BuildDict->add_empty_key( argId);
-            m_LastKey = argId;
+            keyLen ++;
         }
 
-    return true;
+    keyLen --;
+
+    if( ss.get_string( potentialKey, keyLen))
+        allOk &= try_parse_short_key( potentialKey);
+
+    return allOk;
 }
 
 bool
 CommandLineArgumentParserBase::try_parse_value( std::string_view value)
 {
+    if( value.empty())
+        return false;
+
     if( m_LastKey.has_value())
         m_BuildDict->add_key_value( m_LastKey.value(), value);
     else

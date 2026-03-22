@@ -9,7 +9,7 @@ TARGET				:= build/app
 CSTD				:= -std=c23
 CXXSTD				:= -std=c++20
 
-COMMON_FLAGS		:= -MMD -MP -Wall -Wextra -Wpedantic
+COMMON_FLAGS		:= -Wall -Wextra -Wpedantic
 DEBUG_FLAGS			:= -g -O0
 RELEASE_FLAGS		:= -O3 -DNDEBUG
 
@@ -41,10 +41,10 @@ DEPENDANCY_FILES := $(OBJS:.o=.d)
 # LOG_MSG		= @echo "[$$( date '+%FT%H:%M:%S.%6N%:z' )] $(1)"
 
 debug:
-	$(MAKE) $(TARGET) -k -j8 BUILD=debug
+	$(MAKE) -k -j8 BUILD=debug build/app
 
 release:
-	$(MAKE) $(TARGET) -k -j8 BUILD=release
+	$(MAKE) -k -j8 BUILD=release build/app
 
 $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) -o $@

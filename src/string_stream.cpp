@@ -28,9 +28,15 @@ StringStream::StringStream( std::string_view text)
 }
 
 bool
+StringStream::is_exhausted()
+{
+    return m_Cursor >= m_TextEnd;
+}
+
+bool
 StringStream::peek_char( char & outChar)
 {
-    if( m_Cursor < m_TextEnd)
+    if( ! is_exhausted())
     {
         outChar = *m_Cursor;
         return true;
@@ -42,7 +48,7 @@ StringStream::peek_char( char & outChar)
 bool
 StringStream::get_char( char & outChar)
 {
-    if( m_Cursor < m_TextEnd)
+    if( ! is_exhausted())
     {
         outChar = *m_Cursor;
         m_Cursor ++;

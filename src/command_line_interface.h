@@ -21,9 +21,7 @@
 # define _CLIPARSER_H_
 
 #include <concepts>
-#include <memory>
 #include <unordered_map>
-#include <vector>
 
 # ifndef _CONCEPTS_H_
 #  include "concepts.h"
@@ -94,8 +92,8 @@ private:
 
     bool try_syntax_command_line();
     bool try_syntax_flag_group();
-    bool try_syntax_short_argument();
-    bool try_syntax_long_argument();
+    bool try_syntax_short_key();
+    bool try_syntax_long_key();
     bool try_syntax_value();
     bool try_syntax_unquoted_value();
     bool try_syntax_singly_quoted_value();
@@ -115,14 +113,16 @@ class CommandLineArgumentTemplateBase
 public:
     using InternalArgIdT = unsigned long;
 
-protected:
     CommandLineArgumentTemplateBase( InternalArgIdT id) : m_Id{ id} {};
 
+protected:
+    InternalArgIdT      m_Id;
+
+public:
     std::string_view    m_ShortKey;
     std::string_view    m_LongKey;
     std::string_view    m_ShortHelp;
     std::string_view    m_VerboseHelp;
-    InternalArgIdT      m_Id;
 };
 
 ////////////////////////////////////////////////
@@ -133,21 +133,26 @@ class CommandLineArgumentDictBase
 protected:
     friend class CommandLineArgumentParserBase;
 
-    using ValueT = std::list< std::string>;
-    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
-    using ContainerT = std::unordered_map< unsigned long, ValueT>;
-
 public:
-    ValueT const &  get_process_value();
+    using value_type = std::list< std::string>;
+    using iterator = value_type *;
 
 protected:
-    ValueT *        base_get_key_value( InternalArgIdT argId);
-    void            add_empty_key( InternalArgIdT argId);
-    void            add_key_value( InternalArgIdT argId, std::string_view value);
-    void            add_process_value( std::string_view value);
+    using InternalArgIdT = CommandLineArgumentTemplateBase::InternalArgIdT;
+    using ContainerT = std::unordered_map< unsigned long, value_type>;
 
-    ContainerT      m_Dict;
-    ValueT          m_ProcessValue;
+public:
+    iterator            end();
+    value_type const &  get_process_value();
+
+protected:
+    iterator            base_get_key_value( InternalArgIdT argId);
+    value_type &        add_empty_key( InternalArgIdT argId);
+    void                add_key_value( InternalArgIdT argId, std::string_view value);
+    void                add_process_value( std::string_view value);
+
+    ContainerT          m_Dict;
+    value_type          m_ProcessValue;
 };
 
 ////////////////////////////////////////////////
@@ -169,6 +174,7 @@ protected:
     void clear_key_lookup_tables();
 
     bool try_parse_long_key( std::string_view key);
+    bool try_parse_short_key( std::string_view key);
     bool try_parse_short_key_group( std::string_view keyGroup);
     bool try_parse_value( std::string_view value);
 
@@ -192,15 +198,13 @@ template< typename ArgTypeT, typename ArgIdT> requires
 class CommandLineArgumentTemplate : public CommandLineArgumentTemplateBase
 {
 public:
-    using index_type = ArgIdT;
+    using key_type = ArgIdT;
 
-    CommandLineArgumentTemplate( ArgTypeT type, ArgIdT id)
+    CommandLineArgumentTemplate( ArgIdT id)
     :
-        CommandLineArgumentTemplateBase( static_cast< InternalArgIdT>( id)),
-        m_ArgType{ type}
+        CommandLineArgumentTemplateBase( static_cast< InternalArgIdT>( id))
     {};
 
-protected:
     ArgTypeT m_ArgType;
 };
 
@@ -209,9 +213,9 @@ template< typename ArgIdT> requires
 class CommandLineArgumentDict : public CommandLineArgumentDictBase
 {
 public:
-    using index_type = ArgIdT;
+    using key_type = ArgIdT;
 
-    ValueT *
+    value_type *
     get_key_value( ArgIdT argId)
     {   return base_get_key_value( static_cast< InternalArgIdT>( argId)); };
 };
@@ -244,7 +248,7 @@ public:
 
     template< typename ArgDictT> requires
         std::derived_from< ArgDictT, CommandLineArgumentDictBase> &&
-        std::is_same_v< typename ArgDictT::index_type, typename ArgTemplateT::index_type>
+        std::is_same_v< typename ArgDictT::key_type, typename ArgTemplateT::key_type>
     bool
     parse( ArgDictT & outDict)
     {   return base_parse( outDict); };
