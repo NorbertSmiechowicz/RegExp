@@ -1,5 +1,5 @@
 
-#include "string_stream.h"
+#include "string_stream.hpp"
 
 #include "string.h"
 #include "stdlib.h"

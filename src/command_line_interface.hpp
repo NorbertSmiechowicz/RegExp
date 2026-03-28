@@ -24,11 +24,11 @@
 #include <unordered_map>
 
 # ifndef _CONCEPTS_H_
-#  include "concepts.h"
+#  include "concepts.hpp"
 # endif//_CONCEPTS_H_
 
 # ifndef _STRING_TYPES_H_
-#  include "string_stream.h"
+#  include "string_stream.hpp"
 # endif//_STRING_TYPES_H_
 
 # include <list>

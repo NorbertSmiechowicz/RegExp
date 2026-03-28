@@ -1,6 +1,6 @@
 
-#include "forward_string_index.h"
-#include "indexed_vector.h"
+#include "forward_string_index.hpp"
+#include "indexed_vector.hpp"
 
 #include <cstddef>
 #include <cstring>

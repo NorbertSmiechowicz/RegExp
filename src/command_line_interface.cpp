@@ -17,8 +17,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "command_line_interface.h"
-#include "string_stream.h"
+#include "command_line_interface.hpp"
+#include "string_stream.hpp"
 
 #include <string.h>
 #include <string_view>

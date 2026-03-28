@@ -3,7 +3,7 @@
 # define _STRING_TYPES_H_
 
 # ifndef _MACRO_LIB_H_
-#  include "macro_lib.h"
+#  include "macro_lib.hpp"
 # endif
 
 # include <string_view>

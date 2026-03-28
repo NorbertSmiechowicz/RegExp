@@ -1,6 +1,6 @@
 
 CC					:= gcc
-CXX					:= g++
+CXX				:= g++
 
 SRC_ROOT 			:= src
 SRC_DIRS			:= src
@@ -8,16 +8,19 @@ TARGET				:= build/app
 
 CSTD				:= -std=c23
 CXXSTD				:= -std=c++20
+LDFLAGS			:=
 
-COMMON_FLAGS		:= -Wall -Wextra -Wpedantic
-DEBUG_FLAGS			:= -g -O0
+SAN_FLAGS			:= -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
+COMMON_FLAGS		:= -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wnrvo -Wswitch-enum -Werror
+DEBUG_FLAGS		:= -g -O0 -fsanitize=undefined -fsanitize=address
 RELEASE_FLAGS		:= -O3 -DNDEBUG
 
 BUILD				?= debug
 
 ifeq ($(BUILD),debug)
-	CFLAGS			:= $(CSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS)
-    CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS)
+	CFLAGS			:= $(CSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(SAN_FLAGS)
+    CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(SAN_FLAGS)
+	LDFLAGS		:= $(LDFLAGS) $(SAN_FLAGS)
 	BUILD_ROOT		:= build/debug
 else
 	CFLAGS			:= $(CSTD) $(COMMON_FLAGS) $(RELEASE_FLAGS)
@@ -31,7 +34,7 @@ CXXSRC				:= $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
 BUILD_SUBDIRS		:= $(patsubst $(SRC_ROOT)%,$(BUILD_ROOT)%,$(SRC_DIRS))
 
 COBJS				:= $(patsubst $(SRC_ROOT)/%.c,$(BUILD_ROOT)/%.o,$(CSRC))
-CXXOBJS				:= $(patsubst $(SRC_ROOT)/%.cpp,$(BUILD_ROOT)/%.o,$(CXXSRC))
+CXXOBJS			:= $(patsubst $(SRC_ROOT)/%.cpp,$(BUILD_ROOT)/%.o,$(CXXSRC))
 
 OBJS				:= $(COBJS) $(CXXOBJS)
 
@@ -47,7 +50,7 @@ release:
 	$(MAKE) -k -j8 BUILD=release build/app
 
 $(TARGET): $(OBJS)
-	$(CXX) $(OBJS) -o $@
+	$(CXX) $(LDFLAGS) $(OBJS) -o $@
 
 $(BUILD_SUBDIRS):
 	mkdir -p $(BUILD_SUBDIRS)
