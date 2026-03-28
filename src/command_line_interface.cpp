@@ -20,44 +20,57 @@
 #include "command_line_interface.hpp"
 #include "string_stream.hpp"
 
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 #include <string_view>
 #include <utility>
+#include <array>
 
 ////////////////////////////////////////////////
-#define TerminalTokenList\
-    TOKEN_ID( White)                TOKEN_CHARS( " \t\n\v\f\r")\
-    TOKEN_ID( SingleQuotes)         TOKEN_CHARS( "'")\
-    TOKEN_ID( DoubleQuotes)         TOKEN_CHARS( "\"")\
-    TOKEN_ID( Hyphen)               TOKEN_CHARS( "-")\
+//  CommandLineLexTerminalId
 
-#define TOKEN_ID( X) TerminalTokenId_##X,
-#define TOKEN_CHARS( X)
+#define LEX_TERMINAL_LIST_DEF\
+    LEX_TERMINAL_ID( White)             LEX_TERMINAL_CHAR_SET( " \t\n\v\f\r")\
+    LEX_TERMINAL_ID( SingleQuotes)      LEX_TERMINAL_CHAR_SET( "'")\
+    LEX_TERMINAL_ID( DoubleQuotes)      LEX_TERMINAL_CHAR_SET( "\"")\
+    LEX_TERMINAL_ID( Hyphen)            LEX_TERMINAL_CHAR_SET( "-")\
 
-typedef enum
+#define LEX_TERMINAL_ID( X) X,
+#define LEX_TERMINAL_CHAR_SET( X)
+
+enum class CommandLineLexTerminalId : std::size_t
 {
-    TerminalTokenList
-    TokenCount
-}
-TerminalTokenId;
-
-#undef TOKEN_CHARS
-#undef TOKEN_ID
-
-using TerminalCharSet = char const *;
-
-#define TOKEN_ID( X)
-#define TOKEN_CHARS( X) X,
-
-static TerminalCharSet TerminalTokenArray[]
-{
-    TerminalTokenList
+    LEX_TERMINAL_LIST_DEF
+    TerminalCount
 };
 
-#undef TOKEN_CHARS
-#undef TOKEN_ID
+#undef LEX_TERMINAL_CHAR_SET
+#undef LEX_TERMINAL_ID
 
-#undef TerminalTokenList
+using CommandLineTerminalCharacterSet = char const *;
+
+#define LEX_TERMINAL_ID( X)
+#define LEX_TERMINAL_CHAR_SET( X) X,
+
+static constexpr std::array< CommandLineTerminalCharacterSet, static_cast< std::size_t>( CommandLineLexTerminalId::TerminalCount)> CommandLineLexTerminalCharacterSets
+{
+    LEX_TERMINAL_LIST_DEF
+};
+
+#undef LEX_TERMINAL_CHAR_SET
+#undef LEX_TERMINAL_ID
+
+#undef LEX_TERMINAL_LIST_DEF
+
+////////////////////////////////////////////////
+//  CommandLineLexTokenId
+
+enum class CommandLineLexTokenId : std::size_t
+{
+    ShortKeyGroup,
+    LongKey,
+    Value
+};
 
 ////////////////////////////////////////////////
 // CommandLineArgumentLexer - definition
@@ -69,12 +82,14 @@ CommandLineArgumentLexer::CommandLineArgumentLexer( std::string_view commandLine
 }
 
 bool
-CommandLineArgumentLexer::lex( CliLexTokenList & outTokens)
+CommandLineArgumentLexer::lex( std::list< CommandLineLexToken> & outTokens)
 {
+    outTokens.clear();
+    m_LexedTokens = &outTokens;
+
     if( ! try_syntax_command_line())
         return false;
 
-    outTokens = std::exchange( m_TokenList, CliLexTokenList{});
     return true;
 }
 
@@ -83,30 +98,30 @@ CommandLineArgumentLexer::skip_white()
 {
     bool textContinues = true;
 
-    while( peek_terminal( TerminalTokenId_White))
+    while( peek_terminal( CommandLineLexTerminalId::White))
         textContinues &= m_CommandLineStream.skip_char_count( 1);
 
     return textContinues;
 }
 
 bool
-CommandLineArgumentLexer::peek_terminal( unsigned long terminalTokenId)
+CommandLineArgumentLexer::peek_terminal( CommandLineLexTerminalId terminalTokenId)
 {
     char currentChar;
 
     if( m_CommandLineStream.peek_char( currentChar))
-        return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
+        return std::strchr( CommandLineLexTerminalCharacterSets[ static_cast< std::size_t>( terminalTokenId)], currentChar) != nullptr;
 
     return false;
 }
 
 bool
-CommandLineArgumentLexer::try_terminal( unsigned long terminalTokenId)
+CommandLineArgumentLexer::try_terminal( CommandLineLexTerminalId terminalTokenId)
 {
     char currentChar;
 
     if( m_CommandLineStream.get_char( currentChar))
-        return strchr( TerminalTokenArray[ terminalTokenId], currentChar) != nullptr;
+        return std::strchr( CommandLineLexTerminalCharacterSets[ static_cast< std::size_t>( terminalTokenId)], currentChar) != nullptr;
 
     return false;
 }
@@ -144,25 +159,25 @@ CommandLineArgumentLexer::try_syntax_long_key()
 {
     skip_white();
 
-    if( ! try_terminal( TerminalTokenId_Hyphen))
+    if( ! try_terminal( CommandLineLexTerminalId::Hyphen))
         return false;
 
-    if( ! try_terminal( TerminalTokenId_Hyphen))
+    if( ! try_terminal( CommandLineLexTerminalId::Hyphen))
         return false;
 
-    if( peek_terminal( TerminalTokenId_White))
+    if( peek_terminal( CommandLineLexTerminalId::White))
         return false;
 
     char character = 0;
     std::string capture;
 
-    while( ! peek_terminal( TerminalTokenId_White))
+    while( ! peek_terminal( CommandLineLexTerminalId::White))
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             break;
 
-    m_TokenList.emplace_back( CliLexTokenId::LongKey, std::move( capture));
+    m_LexedTokens->emplace_back( CommandLineLexTokenId::LongKey, std::move( capture));
     return true;
 }
 
@@ -171,22 +186,22 @@ CommandLineArgumentLexer::try_syntax_short_key()
 {
     skip_white();
 
-    if( ! try_terminal( TerminalTokenId_Hyphen))
+    if( ! try_terminal( CommandLineLexTerminalId::Hyphen))
         return false;
 
-    if( peek_terminal( TerminalTokenId_Hyphen) || peek_terminal( TerminalTokenId_White))
+    if( peek_terminal( CommandLineLexTerminalId::Hyphen) || peek_terminal( CommandLineLexTerminalId::White))
         return false;
 
     char character = 0;
     std::string capture;
 
-    while( ! peek_terminal( TerminalTokenId_White))
+    while( ! peek_terminal( CommandLineLexTerminalId::White))
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             break;
 
-    m_TokenList.emplace_back( CliLexTokenId::ShortKeyGroup, std::move( capture));
+    m_LexedTokens->emplace_back( CommandLineLexTokenId::ShortKeyGroup, std::move( capture));
     return true;
 }
 
@@ -219,19 +234,19 @@ CommandLineArgumentLexer::try_syntax_unquoted_value()
 {
     skip_white();
 
-    if( peek_terminal( TerminalTokenId_Hyphen))
+    if( peek_terminal( CommandLineLexTerminalId::Hyphen))
         return false;
 
     char character = 0;
     std::string capture;
 
-    while( ! peek_terminal( TerminalTokenId_White))
+    while( ! peek_terminal( CommandLineLexTerminalId::White))
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             break;
 
-    m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
+    m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
     return true;
 }
 
@@ -240,22 +255,22 @@ CommandLineArgumentLexer::try_syntax_singly_quoted_value()
 {
     skip_white();
 
-    if( ! try_terminal( TerminalTokenId_SingleQuotes))
+    if( ! try_terminal( CommandLineLexTerminalId::SingleQuotes))
         return false;
 
     char character = 0;
     std::string capture;
 
-    while( ! peek_terminal( TerminalTokenId_SingleQuotes))
+    while( ! peek_terminal( CommandLineLexTerminalId::SingleQuotes))
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
 
-    if( ! try_terminal( TerminalTokenId_SingleQuotes))
+    if( ! try_terminal( CommandLineLexTerminalId::SingleQuotes))
         return false;
 
-    m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
+    m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
     return true;
 }
 
@@ -264,52 +279,62 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
 {
     skip_white();
 
-    if( ! try_terminal( TerminalTokenId_DoubleQuotes))
+    if( ! try_terminal( CommandLineLexTerminalId::DoubleQuotes))
         return false;
 
     char character = 0;
     std::string capture;
 
-    while( ! peek_terminal( TerminalTokenId_DoubleQuotes))
+    while( ! peek_terminal( CommandLineLexTerminalId::DoubleQuotes))
         if( m_CommandLineStream.get_char( character))
             capture += character;
         else
             return false;
 
-    if( ! try_terminal( TerminalTokenId_DoubleQuotes))
+    if( ! try_terminal( CommandLineLexTerminalId::DoubleQuotes))
         return false;
 
-    m_TokenList.emplace_back( CliLexTokenId::Value, std::move( capture));
+    m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
     return true;
 }
 
 ////////////////////////////////////////////////
 // CommandLineArgumentDictBase - definition
 
-CommandLineArgumentDictBase::iterator
-CommandLineArgumentDictBase::end()
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::end() const
 {
     return nullptr;
 }
 
-CommandLineArgumentDictBase::value_type const &
-CommandLineArgumentDictBase::get_process_value()
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::get_process_value() const
 {
-    return m_ProcessValue;
+    if( ! m_ProcessValue.empty())
+        return &m_ProcessValue;
+
+    return end();
 }
 
-CommandLineArgumentDictBase::iterator
-CommandLineArgumentDictBase::base_get_key_value( InternalArgIdT argId)
+void
+CommandLineArgumentDictBase::clear()
 {
-    ContainerT::iterator entry = m_Dict.find( argId);
+    m_Dict.clear();
+    m_ProcessValue.clear();
+}
+
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::do_get_argument_value( CommandLineArgumentId argId) const
+{
+    InnerDict::const_iterator entry = m_Dict.find( argId);
 
     return entry != m_Dict.end() ? &entry->second : nullptr;
 }
 
 CommandLineArgumentDictBase::value_type &
-CommandLineArgumentDictBase::add_empty_key( InternalArgIdT argId)
+CommandLineArgumentDictBase::add_empty_key( CommandLineArgumentId argId)
 {
-    ContainerT::iterator entry = m_Dict.find( argId);
+    InnerDict::iterator entry = m_Dict.find( argId);
 
     if( entry == m_Dict.end())
         entry = m_Dict.emplace( argId, value_type{}).first;
@@ -318,7 +343,7 @@ CommandLineArgumentDictBase::add_empty_key( InternalArgIdT argId)
 }
 
 void
-CommandLineArgumentDictBase::add_key_value( InternalArgIdT argId, std::string_view value)
+CommandLineArgumentDictBase::add_key_value( CommandLineArgumentId argId, std::string_view value)
 {
     value_type & entry = add_empty_key( argId);
 
@@ -332,50 +357,113 @@ CommandLineArgumentDictBase::add_process_value( std::string_view value)
 }
 
 ////////////////////////////////////////////////
-//  CommandLineArgumentParserBase - definition
+//  CommandLineArgumentIdLookupTable
 
-CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char * argv[])
-:
-    m_ArgCount{ argc},
-    m_ArgValues{ argv}
+bool
+CommandLineArgumentIdLookupTable::lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const
 {
+    InnerDict::const_iterator keyValPair = m_LongKeyLookup.find( key);
+
+    if( keyValPair == m_LongKeyLookup.end())
+        return false;
+
+    outArgId = keyValPair->second;
+    return true;
 }
 
 bool
-CommandLineArgumentParserBase::base_parse( CommandLineArgumentDictBase & outDict)
+CommandLineArgumentIdLookupTable::lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const
 {
-    if( ! lex())
+    InnerDict::const_iterator keyValPair = m_ShortKeyLookup.find( key);
+
+    if( keyValPair == m_ShortKeyLookup.end())
         return false;
 
-    m_BuildDict = &outDict;
+    outArgId = keyValPair->second;
+    return true;
+}
 
-    bool allOk = true;
+bool
+CommandLineArgumentIdLookupTable::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
+{
+    bool loadOk = true;
 
-    for( CliLexToken & lexToken : m_LexTokenList)
+    loadOk &= register_long_key( argTemplate.m_LongKey, argTemplate.m_Id);
+    loadOk &= register_short_key( argTemplate.m_ShortKey, argTemplate.m_Id);
+
+    if( ! loadOk)
+        std::printf( "Failed to load argument template for option: [ -" FMT_STR_VIEW " / --" FMT_STR_VIEW " ]\n",
+            PRINT_STR_VIEW( argTemplate.m_ShortKey),
+            PRINT_STR_VIEW( argTemplate.m_LongKey)
+        );
+
+    return loadOk;
+}
+
+bool
+CommandLineArgumentIdLookupTable::register_long_key( std::string_view key, CommandLineArgumentId argId)
+{
+    if( key.empty())
+        return true;
+
+    InnerDict::iterator duplicateEntry = m_LongKeyLookup.find( key);
+
+    if( duplicateEntry != m_LongKeyLookup.end())
     {
-        switch( lexToken.Id)
+        if( duplicateEntry->second == argId)
         {
-        case CliLexTokenId::LongKey:
-            allOk &= try_parse_long_key( lexToken.Text);
-            break;
-
-        case CliLexTokenId::ShortKeyGroup:
-            allOk &= try_parse_short_key_group( lexToken.Text);
-            break;
-
-        case CliLexTokenId::Value:
-            allOk &= try_parse_value( lexToken.Text);
-            break;
+            return true;
+        }
+        else
+        {
+            std::printf( "Command line long argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
+            return false;
         }
     }
 
-    return allOk;
+    m_LongKeyLookup[ key] = argId;
+    return true;
+}
+
+bool
+CommandLineArgumentIdLookupTable::register_short_key( std::string_view key, CommandLineArgumentId argId)
+{
+    if( key.empty())
+        return true;
+
+    InnerDict::iterator duplicateEntry = m_ShortKeyLookup.find( key);
+
+    if( duplicateEntry != m_ShortKeyLookup.end())
+    {
+        if( duplicateEntry->second == argId)
+        {
+            return true;
+        }
+        else
+        {
+            std::printf( "Command line short argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
+            return false;
+        }
+    }
+
+    m_ShortKeyLookup[ key] = argId;
+    return true;
+}
+
+////////////////////////////////////////////////
+//  CommandLineArgumentParserBase - definition
+
+CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char const * argv[], CommandLineArgumentIdLookupTable && argLookupTable)
+:
+    m_ArgCount{ argc},
+    m_ArgValues{ argv},
+    m_ArgIdLookupTable{ std::move( argLookupTable)}
+{
 }
 
 bool
 CommandLineArgumentParserBase::lex()
 {
-    m_LexTokenList.clear();
     std::string commandLine{ ""};
 
     for( int argi = 1; argi < m_ArgCount; argi ++)
@@ -390,68 +478,62 @@ CommandLineArgumentParserBase::lex()
 }
 
 bool
-CommandLineArgumentParserBase::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
+CommandLineArgumentParserBase::do_parse( CommandLineArgumentDictBase & outDict)
 {
-    bool result = true;
+    if( ! lex())
+        return false;
 
-    result &= register_lookup( m_LongKeyLookup, argTemplate.m_LongKey, argTemplate.m_Id);
-    result &= register_lookup( m_ShortKeyLookup, argTemplate.m_ShortKey, argTemplate.m_Id);
+    outDict.clear();
+    m_BuildDict = &outDict;
 
-    return result;
-}
+    bool allOk = true;
 
-bool
-CommandLineArgumentParserBase::register_lookup( KeyMap & map, std::string_view key, InternalArgIdT argId)
-{
-    if( key.empty())
-        return true;
-
-    KeyMap::iterator duplicateEntry = map.find( key);
-
-    if( duplicateEntry != map.end())
+    for( CommandLineLexToken & lexToken : m_LexTokenList)
     {
-        if( duplicateEntry->second == argId)
-            return true;
-        else
-            return false;
+        switch( lexToken.m_Id)
+        {
+        case CommandLineLexTokenId::LongKey:
+            allOk &= try_parse_long_key( lexToken.m_Text);
+            break;
+
+        case CommandLineLexTokenId::ShortKeyGroup:
+            allOk &= try_parse_short_key_group( lexToken.m_Text);
+            break;
+
+        case CommandLineLexTokenId::Value:
+            allOk &= try_parse_value( lexToken.m_Text);
+            break;
+        }
     }
 
-    map[ key] = argId;
-    return true;
-}
-
-void
-CommandLineArgumentParserBase::clear_key_lookup_tables()
-{
-    m_LongKeyLookup.clear();
-    m_ShortKeyLookup.clear();
+    return allOk;
 }
 
 bool
 CommandLineArgumentParserBase::try_parse_long_key( std::string_view longKey)
 {
-    if( InternalArgIdT argId; lookup_long_key( argId, longKey))
+    if( CommandLineArgumentId argId; m_ArgIdLookupTable.lookup_long_key( argId, longKey))
     {
         m_BuildDict->add_empty_key( argId);
-        m_LastKey = argId;
+        m_ActiveKeyArgId = argId;
         return true;
     }
 
-    m_LastKey.reset();
+    m_ActiveKeyArgId.reset();
     return false;
 }
 
 bool
 CommandLineArgumentParserBase::try_parse_short_key( std::string_view shortKey)
 {
-    if( InternalArgIdT argId; lookup_short_key( argId, shortKey))
+    if( CommandLineArgumentId argId; m_ArgIdLookupTable.lookup_short_key( argId, shortKey))
     {
         m_BuildDict->add_empty_key( argId);
-        m_LastKey = argId;
+        m_ActiveKeyArgId = argId;
         return true;
     }
 
-    m_LastKey.reset();
+    m_ActiveKeyArgId.reset();
     return false;
 }
 
@@ -460,13 +542,13 @@ CommandLineArgumentParserBase::try_parse_short_key_group( std::string_view short
 {
     StringStream ss{ shortKeyGroup};
     std::string_view potentialKey{};
-    InternalArgIdT argId{};
+    CommandLineArgumentId argId{};
     bool allOk = true;
 
     unsigned long keyLen{ 1};
 
     while( ss.peek_string( potentialKey, keyLen))
-        if( ! lookup_short_key( argId, potentialKey))
+        if( ! m_ArgIdLookupTable.lookup_short_key( argId, potentialKey))
         {
             keyLen --;
 
@@ -494,34 +576,10 @@ CommandLineArgumentParserBase::try_parse_value( std::string_view value)
     if( value.empty())
         return false;
 
-    if( m_LastKey.has_value())
-        m_BuildDict->add_key_value( m_LastKey.value(), value);
+    if( m_ActiveKeyArgId.has_value())
+        m_BuildDict->add_key_value( m_ActiveKeyArgId.value(), value);
     else
         m_BuildDict->add_process_value( value);
 
-    return true;
-}
-
-bool
-CommandLineArgumentParserBase::lookup_long_key( InternalArgIdT & outArgId, std::string_view key)
-{
-    KeyMap::iterator keyValPair = m_LongKeyLookup.find( key);
-
-    if( keyValPair == m_LongKeyLookup.end())
-        return false;
-
-    outArgId = keyValPair->second;
-    return true;
-}
-
-bool
-CommandLineArgumentParserBase::lookup_short_key( InternalArgIdT & outArgId, std::string_view key)
-{
-    KeyMap::iterator keyValPair = m_ShortKeyLookup.find( key);
-
-    if( keyValPair == m_ShortKeyLookup.end())
-        return false;
-
-    outArgId = keyValPair->second;
     return true;
 }

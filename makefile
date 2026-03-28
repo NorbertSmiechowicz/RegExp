@@ -10,9 +10,10 @@ CSTD				:= -std=c23
 CXXSTD				:= -std=c++20
 LDFLAGS			:=
 
-SAN_FLAGS			:= -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
+# SAN_FLAGS			:= -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
+SAN_FLAGS			:=
 COMMON_FLAGS		:= -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wnrvo -Wswitch-enum -Werror
-DEBUG_FLAGS		:= -g -O0 -fsanitize=undefined -fsanitize=address
+DEBUG_FLAGS		:= -g -O0
 RELEASE_FLAGS		:= -O3 -DNDEBUG
 
 BUILD				?= debug

@@ -17,7 +17,8 @@ enum class CliArgType
 enum class CliArgId
 {
     Help,
-    File
+    File,
+    Filee
 };
 
 using CliArgTemplate = CommandLineArgumentTemplate< CliArgType, CliArgId>;
@@ -32,24 +33,22 @@ using CliArgParser = CommandLineArgumentParser< CliArgTemplate>;
         _argtmplt.m_LongKey = (LongKey);\
     } while( 0)
 
-int main( int argc, char* argv[])
+int main( int argc, char const * argv[])
 {
     ////////////////////////////////////////////////
 
-    std::vector< CliArgTemplate> argTemplates
-    {
+    std::vector< CliArgTemplate> argTemplates{
         CliArgTemplate{ CliArgId::Help},
-        CliArgTemplate{ CliArgId::File}
+        CliArgTemplate{ CliArgId::File},
+        CliArgTemplate{ CliArgId::Filee},
     };
 
     INIT_ARG_TEMPLATE( argTemplates, CliArgId::Help, CliArgType::Flag, "h", "help");
     INIT_ARG_TEMPLATE( argTemplates, CliArgId::File, CliArgType::Sequence, "f", "file");
+    INIT_ARG_TEMPLATE( argTemplates, CliArgId::Filee, CliArgType::Sequence, "f", "fisle");
 
-    CliArgParser argParser{ argc, argv};
+    CliArgParser argParser{ argc, argv, std::views::all( argTemplates)};
     CliArgDict argDict;
-
-    if( ! argParser.load_argument_templates( std::views::all( argTemplates)))
-        printf( "Loading command line argument definitions failed.\n");
 
     if( ! argParser.parse( argDict))
         printf( "Parsing command line failed.\n");
@@ -57,11 +56,11 @@ int main( int argc, char* argv[])
     // ahh te dedykowane obsługi znaków w konsolach...
     // run -hf testa testb testc --testd teste --file \'\|testf\ \ \ \|\'
 
-    if( argDict.get_key_value( CliArgId::Help))
+    if( argDict.get_argument_value( CliArgId::Help))
         printf( "Help was invoked.\n");
 
-    if( CliArgDict::iterator fileValue = argDict.get_key_value( CliArgId::File); fileValue != argDict.end())
-        for( std::string & fileText : *fileValue)
+    if( CliArgDict::const_iterator fileValue = argDict.get_argument_value( CliArgId::File); fileValue != argDict.end())
+        for( std::string const & fileText : *fileValue)
             std::cout<< fileText << ' ';
 
     std::cout << '\n';

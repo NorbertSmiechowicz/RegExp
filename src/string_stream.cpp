@@ -1,13 +1,11 @@
 
 #include "string_stream.hpp"
-
-#include "string.h"
-#include "stdlib.h"
+#include <cstring>
 
 ////////////////////////////////////////////////
-//  StringStream - definitions
+//  StringStream
 
-StringStream::StringStream( char const * text, unsigned long length)
+StringStream::StringStream( char const * text, std::size_t length)
 :
     m_Cursor{ text},
     m_TextEnd{ text + length}
@@ -16,7 +14,7 @@ StringStream::StringStream( char const * text, unsigned long length)
 
 StringStream::StringStream( char const * text)
 :
-    StringStream( std::string_view( text, strlen( text)))
+    StringStream( std::string_view( text, std::strlen( text)))
 {
 }
 
@@ -28,13 +26,13 @@ StringStream::StringStream( std::string_view text)
 }
 
 bool
-StringStream::is_exhausted()
+StringStream::is_exhausted() const
 {
     return m_Cursor >= m_TextEnd;
 }
 
 bool
-StringStream::peek_char( char & outChar)
+StringStream::peek_char( char & outChar) const
 {
     if( ! is_exhausted())
     {
@@ -59,7 +57,7 @@ StringStream::get_char( char & outChar)
 }
 
 bool
-StringStream::peek_string( std::string_view & outString, unsigned long length)
+StringStream::peek_string( std::string_view & outString, std::size_t length) const
 {
     if( m_Cursor + length <= m_TextEnd)
     {
@@ -71,7 +69,7 @@ StringStream::peek_string( std::string_view & outString, unsigned long length)
 }
 
 bool
-StringStream::get_string( std::string_view & outString, unsigned long length)
+StringStream::get_string( std::string_view & outString, std::size_t length)
 {
     if( m_Cursor + length <= m_TextEnd)
     {
@@ -84,7 +82,7 @@ StringStream::get_string( std::string_view & outString, unsigned long length)
 }
 
 bool
-StringStream::skip_char_count( unsigned long count)
+StringStream::skip_char_count( std::size_t count)
 {
     if( m_Cursor + count <= m_TextEnd)
     {
@@ -102,7 +100,7 @@ StringStream::set_checkpoint()
 }
 
 ////////////////////////////////////////////////
-//  StringStreamCheckpoint - definitions
+//  StringStreamCheckpoint
 
 StringStreamCheckpoint::StringStreamCheckpoint( StringStream & ss)
 :

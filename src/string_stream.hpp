@@ -8,10 +8,12 @@
 
 # include <string_view>
 
+////////////////////////////////////////////////
+
 class StringStreamCheckpoint;
 
 ////////////////////////////////////////////////
-//  StringStream - definition
+//  StringStream
 
 class StringStream
 {
@@ -19,24 +21,25 @@ class StringStream
 
 public:
     StringStream( std::string_view text);
-    StringStream( char const * text, unsigned long length);
+    StringStream( char const * text, std::size_t length);
     StringStream( char const * text);
 
-    NODISCARD bool          is_exhausted();
-    NODISCARD bool          peek_char( char & outChar);
-    NODISCARD bool          get_char( char & outChar);
-    NODISCARD bool          peek_string( std::string_view & outString, unsigned long length);
-    NODISCARD bool          get_string( std::string_view & outString, unsigned long length);
-    NODISCARD bool          skip_char_count( unsigned long count);
-    StringStreamCheckpoint  set_checkpoint();
+    NODISCARD bool              is_exhausted() const;
+    NODISCARD bool              peek_char( char & outChar) const;
+    NODISCARD bool              get_char( char & outChar);
+    NODISCARD bool              peek_string( std::string_view & outString, std::size_t length) const;
+    NODISCARD bool              get_string( std::string_view & outString, std::size_t length);
+    NODISCARD bool              skip_char_count( std::size_t count);
+
+    StringStreamCheckpoint      set_checkpoint();
 
 private:
-    char const *        m_Cursor;
-    char const *        m_TextEnd;
+    char const *                m_Cursor;
+    char const *                m_TextEnd;
 };
 
 ////////////////////////////////////////////////
-//  StreamViewCheckpoint - declaration
+//  StreamViewCheckpoint
 
 class StringStreamCheckpoint
 {
@@ -46,13 +49,12 @@ private:
     StringStreamCheckpoint( StringStream & ss);
 
 public:
-    bool                update();
-    bool                rollback();
+    bool                        update();
+    bool                        rollback();
 
 private:
-    StringStream &      m_Stream;
-    char const *        m_CommitedCursor;
+    StringStream &              m_Stream;
+    char const *                m_CommitedCursor;
 };
-
 
 #endif//_STRING_TYPES_H_

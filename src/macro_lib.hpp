@@ -32,4 +32,7 @@
 #  define RESTRICT
 # endif
 
+# define FMT_STR_VIEW "%*s"
+# define PRINT_STR_VIEW( X) static_cast<int>((X).length()), (X).data()
+
 #endif//_MACRO_LIB_H_
