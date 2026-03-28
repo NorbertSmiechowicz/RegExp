@@ -19,6 +19,10 @@ class StringStream
 {
     friend class StringStreamCheckpoint;
 
+private:
+    char const *                m_Cursor;
+    char const *                m_TextEnd;
+
 public:
     StringStream( std::string_view text);
     StringStream( char const * text, std::size_t length);
@@ -32,10 +36,6 @@ public:
     NODISCARD bool              skip_char_count( std::size_t count);
 
     StringStreamCheckpoint      set_checkpoint();
-
-private:
-    char const *                m_Cursor;
-    char const *                m_TextEnd;
 };
 
 ////////////////////////////////////////////////
@@ -46,15 +46,15 @@ class StringStreamCheckpoint
     friend class StringStream;
 
 private:
+    StringStream &              m_Stream;
+    char const *                m_CommitedCursor;
+
+private:
     StringStreamCheckpoint( StringStream & ss);
 
 public:
     bool                        update();
     bool                        rollback();
-
-private:
-    StringStream &              m_Stream;
-    char const *                m_CommitedCursor;
 };
 
 #endif//_STRING_TYPES_H_

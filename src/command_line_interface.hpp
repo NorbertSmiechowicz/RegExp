@@ -78,14 +78,16 @@ struct CommandLineLexToken
 
 class CommandLineArgumentLexer
 {
+private:
+    StringStream                                m_CommandLineStream;
+    CommandLineLexToken::List *                 m_LexedTokens;
+
 public:
     CommandLineArgumentLexer( std::string_view commandLine);
 
     NODISCARD bool                              lex( CommandLineLexToken::List & outTokens);
 
 private:
-    using TokenList = CommandLineLexToken::List;
-
     bool                                        skip_white();
 
     NODISCARD bool                              peek_terminal( CommandLineLexTerminalId terminalTokenId);
@@ -99,9 +101,6 @@ private:
     NODISCARD bool                              try_syntax_unquoted_value();
     NODISCARD bool                              try_syntax_singly_quoted_value();
     NODISCARD bool                              try_syntax_doubly_quoted_value();
-
-    StringStream                                m_CommandLineStream;
-    TokenList *                                 m_LexedTokens;
 };
 
 ////////////////////////////////////////////////
@@ -111,9 +110,6 @@ class CommandLineArgumentTemplateBase
 {
     friend class CommandLineArgumentIdLookupTable;
 
-public:
-    CommandLineArgumentTemplateBase( CommandLineArgumentId id) : m_Id{ id} {};
-
 protected:
     CommandLineArgumentId                       m_Id;
 
@@ -122,6 +118,18 @@ public:
     std::string_view                            m_LongKey;
     std::string_view                            m_ShortHelp;
     std::string_view                            m_VerboseHelp;
+
+public:
+    constexpr
+    CommandLineArgumentTemplateBase( CommandLineArgumentId id, std::string_view skey, std::string_view lkey, std::string_view shelp, std::string_view vhelp)
+    :
+        m_Id{ id},
+        m_ShortKey{ skey},
+        m_LongKey{ lkey},
+        m_ShortHelp{ shelp},
+        m_VerboseHelp{ vhelp}
+    {
+    }
 };
 
 ////////////////////////////////////////////////
@@ -135,20 +143,23 @@ public:
     using value_type = std::list< std::string>;
     using const_iterator = value_type const *;
 
+protected:
+    using InnerDict = std::unordered_map< CommandLineArgumentId, value_type>;
+
+protected:
+    InnerDict                                   m_Dict;
+    value_type                                  m_ProcessValue;
+
+public:
     const_iterator                              end() const;
     const_iterator                              get_process_value() const;
 
 protected:
-    using InnerDict = std::unordered_map< CommandLineArgumentId, value_type>;
-
     void                                        clear();
     const_iterator                              do_get_argument_value( CommandLineArgumentId argId) const;
     value_type &                                add_empty_key( CommandLineArgumentId argId);
     void                                        add_key_value( CommandLineArgumentId argId, std::string_view value);
     void                                        add_process_value( std::string_view value);
-
-    InnerDict                                   m_Dict;
-    value_type                                  m_ProcessValue;
 };
 
 ////////////////////////////////////////////////
@@ -159,16 +170,19 @@ class CommandLineArgumentIdLookupTable
 public:
     using InnerDict = std::unordered_map< std::string_view, CommandLineArgumentId>;
 
-    bool                                        lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const;
-    bool                                        lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const;
-
-    bool                                        load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
-    bool                                        register_long_key( std::string_view key, CommandLineArgumentId argId);
-    bool                                        register_short_key( std::string_view key, CommandLineArgumentId argId);
-
+public:
     InnerDict                                   m_LongKeyLookup;
     InnerDict                                   m_ShortKeyLookup;
 
+public:
+    bool                                        is_empty() const;
+    bool                                        lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const;
+    bool                                        lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const;
+
+    void                                        clear();
+    bool                                        load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
+    bool                                        register_long_key( std::string_view key, CommandLineArgumentId argId);
+    bool                                        register_short_key( std::string_view key, CommandLineArgumentId argId);
 };
 
 ////////////////////////////////////////////////
@@ -182,7 +196,16 @@ protected:
     using OptionalArgId = std::optional< CommandLineArgumentId>;
     using ArgDict = CommandLineArgumentDictBase;
 
-    CommandLineArgumentParserBase( int argc, char const * argv[], CommandLineArgumentIdLookupTable && argLookupTable);
+protected:
+    int                                         m_ArgCount;
+    char const **                               m_ArgValues;
+    CommandLineArgumentIdLookupTable            m_ArgIdLookupTable;
+    CommandLineLexToken::List                   m_LexTokenList;
+    std::optional< CommandLineArgumentId>       m_ActiveKeyArgId;
+    CommandLineArgumentDictBase *               m_BuildDict;
+
+protected:
+    CommandLineArgumentParserBase( int argc, char const * argv[]);
 
     NODISCARD bool                              lex();
     NODISCARD bool                              do_parse( CommandLineArgumentDictBase & outDict);
@@ -191,13 +214,6 @@ protected:
     NODISCARD bool                              try_parse_short_key( std::string_view key);
     NODISCARD bool                              try_parse_short_key_group( std::string_view keyGroup);
     NODISCARD bool                              try_parse_value( std::string_view value);
-
-    int                                         m_ArgCount;
-    char const **                               m_ArgValues;
-    CommandLineArgumentIdLookupTable const      m_ArgIdLookupTable;
-    CommandLineLexToken::List                   m_LexTokenList;
-    std::optional< CommandLineArgumentId>       m_ActiveKeyArgId;
-    CommandLineArgumentDictBase *               m_BuildDict;
 };
 
 ////////////////////////////////////////////////
@@ -210,13 +226,24 @@ class CommandLineArgumentTemplate : public CommandLineArgumentTemplateBase
 public:
     using key_type = ArgIdT;
 
-    CommandLineArgumentTemplate( ArgIdT id)
-    :
-        CommandLineArgumentTemplateBase( static_cast< CommandLineArgumentId>( id))
-    {
-    };
-
+public:
     ArgTypeT                                    m_ArgType;
+
+public:
+    template< typename ...ConstructorArgs>
+    constexpr
+    CommandLineArgumentTemplate( ArgTypeT type, ArgIdT id, ConstructorArgs... other)
+    :
+        CommandLineArgumentTemplateBase( static_cast< CommandLineArgumentId>( id), other...),
+        m_ArgType{ type}
+    {
+    }
+
+    ArgIdT
+    get_id() const
+    {
+        return static_cast< ArgIdT>( m_Id);
+    }
 };
 
 ////////////////////////////////////////////////
@@ -229,6 +256,7 @@ class CommandLineArgumentDict : public CommandLineArgumentDictBase
 public:
     using key_type = ArgIdT;
 
+public:
     const_iterator
     get_argument_value( ArgIdT argId) const
     {
@@ -244,39 +272,33 @@ template< class ArgTemplateT> requires
 class CommandLineArgumentParser : public CommandLineArgumentParserBase
 {
 public:
-    template< std::ranges::view CliArgTemplateView> requires
-        std::is_same_v< std::ranges::range_value_t< CliArgTemplateView>, ArgTemplateT>
-    CommandLineArgumentParser( int argc, char const * argv[], CliArgTemplateView argTemplates)
+    using Dict = CommandLineArgumentDict< typename ArgTemplateT::key_type>;
+
+public:
+    template< std::ranges::range CliArgTemplateRange> requires
+        std::is_same_v< std::ranges::range_value_t< CliArgTemplateRange>, ArgTemplateT>
+    CommandLineArgumentParser( int argc, char const * argv[], CliArgTemplateRange & argTemplates)
     :
-        CommandLineArgumentParserBase(
-            argc,
-            argv,
-            [argTemplates](){
-                bool allOk = true;
-                CommandLineArgumentIdLookupTable lut{};
-
-                for( ArgTemplateT const & argt : argTemplates)
-                    allOk &= lut.load_argument_template( static_cast< CommandLineArgumentTemplateBase const &>( argt));
-
-                if( ! allOk)
-                {
-                    std::printf( "Command line argument definitions are ill formed. Terminating the process...\n");
-                    std::terminate();
-                }
-
-                return lut;
-            }()
-         )
+        CommandLineArgumentParserBase( argc, argv)
     {
+        bool allOk = false;
+
+        for( ArgTemplateT const & argt : argTemplates)
+            allOk &= m_ArgIdLookupTable.load_argument_template( static_cast< CommandLineArgumentTemplateBase const &>( argt));
+
+        if( ! allOk)
+            m_ArgIdLookupTable.clear();
     };
 
-    template< typename ArgDictT> requires
-        std::derived_from< ArgDictT, CommandLineArgumentDictBase> &&
-        std::is_same_v< typename ArgDictT::key_type, typename ArgTemplateT::key_type>
-    bool
-    parse( ArgDictT & outDict)
+    std::optional< Dict>
+    parse()
     {
-        return do_parse( outDict);
+        std::optional< Dict> outDict;
+
+        if( do_parse( *outDict))
+            outDict.reset();
+
+        return outDict;
     };
 };
 

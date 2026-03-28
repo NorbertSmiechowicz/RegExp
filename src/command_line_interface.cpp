@@ -30,13 +30,12 @@
 //  CommandLineLexTerminalId
 
 #define LEX_TERMINAL_LIST_DEF\
-    LEX_TERMINAL_ID( White)             LEX_TERMINAL_CHAR_SET( " \t\n\v\f\r")\
-    LEX_TERMINAL_ID( SingleQuotes)      LEX_TERMINAL_CHAR_SET( "'")\
-    LEX_TERMINAL_ID( DoubleQuotes)      LEX_TERMINAL_CHAR_SET( "\"")\
-    LEX_TERMINAL_ID( Hyphen)            LEX_TERMINAL_CHAR_SET( "-")\
+    LEX_TERMINAL_LIST_ITEM( White,               " \t\n\v\f\r")\
+    LEX_TERMINAL_LIST_ITEM( SingleQuotes,        "'")\
+    LEX_TERMINAL_LIST_ITEM( DoubleQuotes,        "\"")\
+    LEX_TERMINAL_LIST_ITEM( Hyphen,              "-")\
 
-#define LEX_TERMINAL_ID( X) X,
-#define LEX_TERMINAL_CHAR_SET( X)
+#define LEX_TERMINAL_LIST_ITEM( ID, TEXT) ID,
 
 enum class CommandLineLexTerminalId : std::size_t
 {
@@ -44,22 +43,17 @@ enum class CommandLineLexTerminalId : std::size_t
     TerminalCount
 };
 
-#undef LEX_TERMINAL_CHAR_SET
-#undef LEX_TERMINAL_ID
+#undef LEX_TERMINAL_LIST_ITEM
 
 using CommandLineTerminalCharacterSet = char const *;
 
-#define LEX_TERMINAL_ID( X)
-#define LEX_TERMINAL_CHAR_SET( X) X,
+#define LEX_TERMINAL_LIST_ITEM( ID, TEXT) TEXT,
 
-static constexpr std::array< CommandLineTerminalCharacterSet, static_cast< std::size_t>( CommandLineLexTerminalId::TerminalCount)> CommandLineLexTerminalCharacterSets
-{
+static constexpr std::array< CommandLineTerminalCharacterSet, static_cast< std::size_t>( CommandLineLexTerminalId::TerminalCount)> CommandLineLexTerminalCharacterSets{
     LEX_TERMINAL_LIST_DEF
 };
 
-#undef LEX_TERMINAL_CHAR_SET
-#undef LEX_TERMINAL_ID
-
+#undef LEX_TERMINAL_LIST_ITEM
 #undef LEX_TERMINAL_LIST_DEF
 
 ////////////////////////////////////////////////
@@ -73,7 +67,7 @@ enum class CommandLineLexTokenId : std::size_t
 };
 
 ////////////////////////////////////////////////
-// CommandLineArgumentLexer - definition
+// CommandLineArgumentLexer
 
 CommandLineArgumentLexer::CommandLineArgumentLexer( std::string_view commandLine)
 :
@@ -299,7 +293,7 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
 }
 
 ////////////////////////////////////////////////
-// CommandLineArgumentDictBase - definition
+// CommandLineArgumentDictBase
 
 CommandLineArgumentDictBase::const_iterator
 CommandLineArgumentDictBase::end() const
@@ -360,6 +354,12 @@ CommandLineArgumentDictBase::add_process_value( std::string_view value)
 //  CommandLineArgumentIdLookupTable
 
 bool
+CommandLineArgumentIdLookupTable::is_empty() const
+{
+    return m_LongKeyLookup.empty() && m_ShortKeyLookup.empty();
+}
+
+bool
 CommandLineArgumentIdLookupTable::lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const
 {
     InnerDict::const_iterator keyValPair = m_LongKeyLookup.find( key);
@@ -381,6 +381,13 @@ CommandLineArgumentIdLookupTable::lookup_short_key( CommandLineArgumentId & outA
 
     outArgId = keyValPair->second;
     return true;
+}
+
+void
+CommandLineArgumentIdLookupTable::clear()
+{
+    m_LongKeyLookup.clear();
+    m_ShortKeyLookup.clear();
 }
 
 bool
@@ -451,13 +458,12 @@ CommandLineArgumentIdLookupTable::register_short_key( std::string_view key, Comm
 }
 
 ////////////////////////////////////////////////
-//  CommandLineArgumentParserBase - definition
+//  CommandLineArgumentParserBase
 
-CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char const * argv[], CommandLineArgumentIdLookupTable && argLookupTable)
+CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char const * argv[])
 :
     m_ArgCount{ argc},
-    m_ArgValues{ argv},
-    m_ArgIdLookupTable{ std::move( argLookupTable)}
+    m_ArgValues{ argv}
 {
 }
 
@@ -480,6 +486,9 @@ CommandLineArgumentParserBase::lex()
 bool
 CommandLineArgumentParserBase::do_parse( CommandLineArgumentDictBase & outDict)
 {
+    if( m_ArgIdLookupTable.is_empty())
+        return false;
+
     if( ! lex())
         return false;
 
