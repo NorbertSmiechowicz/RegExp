@@ -59,49 +59,6 @@
 ////////////////////////////////////////////////
 
 using CommandLineArgumentId = std::size_t;
-enum class CommandLineLexTerminalId : std::size_t;
-enum class CommandLineLexTokenId : std::size_t;
-
-////////////////////////////////////////////////
-//  CommandLineLexToken
-
-struct CommandLineLexToken
-{
-    using List = std::list< CommandLineLexToken>;
-
-    CommandLineLexTokenId                       m_Id;
-    std::string                                 m_Text;
-};
-
-////////////////////////////////////////////////
-//  CommandLineArgumentLexer
-
-class CommandLineArgumentLexer
-{
-private:
-    StringStream                                m_CommandLineStream;
-    CommandLineLexToken::List *                 m_LexedTokens;
-
-public:
-    CommandLineArgumentLexer( std::string_view commandLine);
-
-    NODISCARD bool                              lex( CommandLineLexToken::List & outTokens);
-
-private:
-    bool                                        skip_white();
-
-    NODISCARD bool                              peek_terminal( CommandLineLexTerminalId terminalTokenId);
-    NODISCARD bool                              try_terminal( CommandLineLexTerminalId terminalTokenId);
-
-    NODISCARD bool                              try_syntax_command_line();
-    NODISCARD bool                              try_syntax_flag_group();
-    NODISCARD bool                              try_syntax_short_key();
-    NODISCARD bool                              try_syntax_long_key();
-    NODISCARD bool                              try_syntax_value();
-    NODISCARD bool                              try_syntax_unquoted_value();
-    NODISCARD bool                              try_syntax_singly_quoted_value();
-    NODISCARD bool                              try_syntax_doubly_quoted_value();
-};
 
 ////////////////////////////////////////////////
 //  CommandLineArgumentTemplateBase
@@ -183,6 +140,52 @@ public:
     bool                                        load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
     bool                                        register_long_key( std::string_view key, CommandLineArgumentId argId);
     bool                                        register_short_key( std::string_view key, CommandLineArgumentId argId);
+};
+
+////////////////////////////////////////////////
+
+enum class CommandLineLexTerminalId : std::size_t;
+enum class CommandLineLexTokenId : std::size_t;
+
+////////////////////////////////////////////////
+//  CommandLineLexToken
+
+struct CommandLineLexToken
+{
+    using List = std::list< CommandLineLexToken>;
+
+    CommandLineLexTokenId                       m_Id;
+    std::string                                 m_Text;
+};
+
+////////////////////////////////////////////////
+//  CommandLineArgumentLexer
+
+class CommandLineArgumentLexer
+{
+private:
+    StringStream                                m_CommandLineStream;
+    CommandLineLexToken::List *                 m_LexedTokens;
+
+public:
+    CommandLineArgumentLexer( std::string_view commandLine);
+
+    NODISCARD bool                              lex( CommandLineLexToken::List & outTokens);
+
+private:
+    bool                                        skip_white();
+
+    NODISCARD bool                              peek_terminal( CommandLineLexTerminalId terminalTokenId);
+    NODISCARD bool                              try_terminal( CommandLineLexTerminalId terminalTokenId);
+
+    NODISCARD bool                              try_syntax_command_line();
+    NODISCARD bool                              try_syntax_flag_group();
+    NODISCARD bool                              try_syntax_short_key();
+    NODISCARD bool                              try_syntax_long_key();
+    NODISCARD bool                              try_syntax_value();
+    NODISCARD bool                              try_syntax_unquoted_value();
+    NODISCARD bool                              try_syntax_singly_quoted_value();
+    NODISCARD bool                              try_syntax_doubly_quoted_value();
 };
 
 ////////////////////////////////////////////////
@@ -281,7 +284,7 @@ public:
     :
         CommandLineArgumentParserBase( argc, argv)
     {
-        bool allOk = false;
+        bool allOk = true;
 
         for( ArgTemplateT const & argt : argTemplates)
             allOk &= m_ArgIdLookupTable.load_argument_template( static_cast< CommandLineArgumentTemplateBase const &>( argt));
@@ -293,9 +296,9 @@ public:
     std::optional< Dict>
     parse()
     {
-        std::optional< Dict> outDict;
+        std::optional< Dict> outDict = Dict{};
 
-        if( do_parse( *outDict))
+        if( ! do_parse( *outDict))
             outDict.reset();
 
         return outDict;

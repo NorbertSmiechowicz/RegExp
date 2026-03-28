@@ -26,6 +26,173 @@
 #include <utility>
 #include <array>
 
+
+////////////////////////////////////////////////
+// CommandLineArgumentDictBase
+
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::end() const
+{
+    return nullptr;
+}
+
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::get_process_value() const
+{
+    if( ! m_ProcessValue.empty())
+        return &m_ProcessValue;
+
+    return end();
+}
+
+void
+CommandLineArgumentDictBase::clear()
+{
+    m_Dict.clear();
+    m_ProcessValue.clear();
+}
+
+CommandLineArgumentDictBase::const_iterator
+CommandLineArgumentDictBase::do_get_argument_value( CommandLineArgumentId argId) const
+{
+    InnerDict::const_iterator entry = m_Dict.find( argId);
+
+    return entry != m_Dict.end() ? &entry->second : nullptr;
+}
+
+CommandLineArgumentDictBase::value_type &
+CommandLineArgumentDictBase::add_empty_key( CommandLineArgumentId argId)
+{
+    InnerDict::iterator entry = m_Dict.find( argId);
+
+    if( entry == m_Dict.end())
+        entry = m_Dict.emplace( argId, value_type{}).first;
+
+    return entry->second;
+}
+
+void
+CommandLineArgumentDictBase::add_key_value( CommandLineArgumentId argId, std::string_view value)
+{
+    value_type & entry = add_empty_key( argId);
+
+    entry.emplace_back( value);
+}
+
+void
+CommandLineArgumentDictBase::add_process_value( std::string_view value)
+{
+    m_ProcessValue.emplace_back( value);
+}
+
+////////////////////////////////////////////////
+//  CommandLineArgumentIdLookupTable
+
+bool
+CommandLineArgumentIdLookupTable::is_empty() const
+{
+    return m_LongKeyLookup.empty() && m_ShortKeyLookup.empty();
+}
+
+bool
+CommandLineArgumentIdLookupTable::lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const
+{
+    InnerDict::const_iterator keyValPair = m_LongKeyLookup.find( key);
+
+    if( keyValPair == m_LongKeyLookup.end())
+        return false;
+
+    outArgId = keyValPair->second;
+    return true;
+}
+
+bool
+CommandLineArgumentIdLookupTable::lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const
+{
+    InnerDict::const_iterator keyValPair = m_ShortKeyLookup.find( key);
+
+    if( keyValPair == m_ShortKeyLookup.end())
+        return false;
+
+    outArgId = keyValPair->second;
+    return true;
+}
+
+void
+CommandLineArgumentIdLookupTable::clear()
+{
+    m_LongKeyLookup.clear();
+    m_ShortKeyLookup.clear();
+}
+
+bool
+CommandLineArgumentIdLookupTable::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
+{
+    bool loadOk = true;
+
+    loadOk &= register_long_key( argTemplate.m_LongKey, argTemplate.m_Id);
+    loadOk &= register_short_key( argTemplate.m_ShortKey, argTemplate.m_Id);
+
+    if( ! loadOk)
+        std::printf( "Failed to load argument template for option: [ -" FMT_STR_VIEW " / --" FMT_STR_VIEW " ]\n",
+            PRINT_STR_VIEW( argTemplate.m_ShortKey),
+            PRINT_STR_VIEW( argTemplate.m_LongKey)
+        );
+
+    return loadOk;
+}
+
+bool
+CommandLineArgumentIdLookupTable::register_long_key( std::string_view key, CommandLineArgumentId argId)
+{
+    if( key.empty())
+        return true;
+
+    InnerDict::iterator duplicateEntry = m_LongKeyLookup.find( key);
+
+    if( duplicateEntry != m_LongKeyLookup.end())
+    {
+        if( duplicateEntry->second == argId)
+        {
+            return true;
+        }
+        else
+        {
+            std::printf( "Command line long argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
+            return false;
+        }
+    }
+
+    m_LongKeyLookup[ key] = argId;
+    return true;
+}
+
+bool
+CommandLineArgumentIdLookupTable::register_short_key( std::string_view key, CommandLineArgumentId argId)
+{
+    if( key.empty())
+        return true;
+
+    InnerDict::iterator duplicateEntry = m_ShortKeyLookup.find( key);
+
+    if( duplicateEntry != m_ShortKeyLookup.end())
+    {
+        if( duplicateEntry->second == argId)
+        {
+            return true;
+        }
+        else
+        {
+            std::printf( "Command line short argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
+            return false;
+        }
+    }
+
+    m_ShortKeyLookup[ key] = argId;
+    return true;
+}
+
+
 ////////////////////////////////////////////////
 //  CommandLineLexTerminalId
 
@@ -240,7 +407,9 @@ CommandLineArgumentLexer::try_syntax_unquoted_value()
         else
             break;
 
-    m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
+    if( ! capture.empty())
+        m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
+
     return true;
 }
 
@@ -289,171 +458,6 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
         return false;
 
     m_LexedTokens->emplace_back( CommandLineLexTokenId::Value, std::move( capture));
-    return true;
-}
-
-////////////////////////////////////////////////
-// CommandLineArgumentDictBase
-
-CommandLineArgumentDictBase::const_iterator
-CommandLineArgumentDictBase::end() const
-{
-    return nullptr;
-}
-
-CommandLineArgumentDictBase::const_iterator
-CommandLineArgumentDictBase::get_process_value() const
-{
-    if( ! m_ProcessValue.empty())
-        return &m_ProcessValue;
-
-    return end();
-}
-
-void
-CommandLineArgumentDictBase::clear()
-{
-    m_Dict.clear();
-    m_ProcessValue.clear();
-}
-
-CommandLineArgumentDictBase::const_iterator
-CommandLineArgumentDictBase::do_get_argument_value( CommandLineArgumentId argId) const
-{
-    InnerDict::const_iterator entry = m_Dict.find( argId);
-
-    return entry != m_Dict.end() ? &entry->second : nullptr;
-}
-
-CommandLineArgumentDictBase::value_type &
-CommandLineArgumentDictBase::add_empty_key( CommandLineArgumentId argId)
-{
-    InnerDict::iterator entry = m_Dict.find( argId);
-
-    if( entry == m_Dict.end())
-        entry = m_Dict.emplace( argId, value_type{}).first;
-
-    return entry->second;
-}
-
-void
-CommandLineArgumentDictBase::add_key_value( CommandLineArgumentId argId, std::string_view value)
-{
-    value_type & entry = add_empty_key( argId);
-
-    entry.emplace_back( value);
-}
-
-void
-CommandLineArgumentDictBase::add_process_value( std::string_view value)
-{
-    m_ProcessValue.emplace_back( value);
-}
-
-////////////////////////////////////////////////
-//  CommandLineArgumentIdLookupTable
-
-bool
-CommandLineArgumentIdLookupTable::is_empty() const
-{
-    return m_LongKeyLookup.empty() && m_ShortKeyLookup.empty();
-}
-
-bool
-CommandLineArgumentIdLookupTable::lookup_long_key( CommandLineArgumentId & outArgId, std::string_view key) const
-{
-    InnerDict::const_iterator keyValPair = m_LongKeyLookup.find( key);
-
-    if( keyValPair == m_LongKeyLookup.end())
-        return false;
-
-    outArgId = keyValPair->second;
-    return true;
-}
-
-bool
-CommandLineArgumentIdLookupTable::lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const
-{
-    InnerDict::const_iterator keyValPair = m_ShortKeyLookup.find( key);
-
-    if( keyValPair == m_ShortKeyLookup.end())
-        return false;
-
-    outArgId = keyValPair->second;
-    return true;
-}
-
-void
-CommandLineArgumentIdLookupTable::clear()
-{
-    m_LongKeyLookup.clear();
-    m_ShortKeyLookup.clear();
-}
-
-bool
-CommandLineArgumentIdLookupTable::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
-{
-    bool loadOk = true;
-
-    loadOk &= register_long_key( argTemplate.m_LongKey, argTemplate.m_Id);
-    loadOk &= register_short_key( argTemplate.m_ShortKey, argTemplate.m_Id);
-
-    if( ! loadOk)
-        std::printf( "Failed to load argument template for option: [ -" FMT_STR_VIEW " / --" FMT_STR_VIEW " ]\n",
-            PRINT_STR_VIEW( argTemplate.m_ShortKey),
-            PRINT_STR_VIEW( argTemplate.m_LongKey)
-        );
-
-    return loadOk;
-}
-
-bool
-CommandLineArgumentIdLookupTable::register_long_key( std::string_view key, CommandLineArgumentId argId)
-{
-    if( key.empty())
-        return true;
-
-    InnerDict::iterator duplicateEntry = m_LongKeyLookup.find( key);
-
-    if( duplicateEntry != m_LongKeyLookup.end())
-    {
-        if( duplicateEntry->second == argId)
-        {
-            return true;
-        }
-        else
-        {
-            std::printf( "Command line long argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
-            return false;
-        }
-    }
-
-    m_LongKeyLookup[ key] = argId;
-    return true;
-}
-
-bool
-CommandLineArgumentIdLookupTable::register_short_key( std::string_view key, CommandLineArgumentId argId)
-{
-    if( key.empty())
-        return true;
-
-    InnerDict::iterator duplicateEntry = m_ShortKeyLookup.find( key);
-
-    if( duplicateEntry != m_ShortKeyLookup.end())
-    {
-        if( duplicateEntry->second == argId)
-        {
-            return true;
-        }
-        else
-        {
-            std::printf( "Command line short argument key conflict for options: %zu, %zu\n", argId, duplicateEntry->second);
-            return false;
-        }
-    }
-
-    m_ShortKeyLookup[ key] = argId;
     return true;
 }
 
@@ -559,7 +563,8 @@ CommandLineArgumentParserBase::try_parse_short_key_group( std::string_view short
     while( ss.peek_string( potentialKey, keyLen))
         if( ! m_ArgIdLookupTable.lookup_short_key( argId, potentialKey))
         {
-            keyLen --;
+            if( keyLen > 1)
+                keyLen --;
 
             if( ss.get_string( potentialKey, keyLen))
                 allOk &= try_parse_short_key( potentialKey);
@@ -571,7 +576,8 @@ CommandLineArgumentParserBase::try_parse_short_key_group( std::string_view short
             keyLen ++;
         }
 
-    keyLen --;
+    if( keyLen > 1)
+        keyLen --;
 
     if( ss.get_string( potentialKey, keyLen))
         allOk &= try_parse_short_key( potentialKey);
@@ -582,9 +588,6 @@ CommandLineArgumentParserBase::try_parse_short_key_group( std::string_view short
 bool
 CommandLineArgumentParserBase::try_parse_value( std::string_view value)
 {
-    if( value.empty())
-        return false;
-
     if( m_ActiveKeyArgId.has_value())
         m_BuildDict->add_key_value( m_ActiveKeyArgId.value(), value);
     else
