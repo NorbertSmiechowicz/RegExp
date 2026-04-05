@@ -137,6 +137,7 @@ public:
     bool                                        lookup_short_key( CommandLineArgumentId & outArgId, std::string_view key) const;
 
     void                                        clear();
+    void                                        reserve( std::size_t size);
     bool                                        load_argument_template( CommandLineArgumentTemplateBase const & argTemplate);
     bool                                        register_long_key( std::string_view key, CommandLineArgumentId argId);
     bool                                        register_short_key( std::string_view key, CommandLineArgumentId argId);
@@ -200,18 +201,14 @@ protected:
     using ArgDict = CommandLineArgumentDictBase;
 
 protected:
-    int                                         m_ArgCount;
-    char const **                               m_ArgValues;
     CommandLineArgumentIdLookupTable            m_ArgIdLookupTable;
     CommandLineLexToken::List                   m_LexTokenList;
     std::optional< CommandLineArgumentId>       m_ActiveKeyArgId;
     CommandLineArgumentDictBase *               m_BuildDict;
 
 protected:
-    CommandLineArgumentParserBase( int argc, char const * argv[]);
-
-    NODISCARD bool                              lex();
-    NODISCARD bool                              do_parse( CommandLineArgumentDictBase & outDict);
+    NODISCARD bool                              lex( int argc, char const * argv[]);
+    NODISCARD bool                              do_parse( CommandLineArgumentDictBase & outDict, int argc, char const * argv[]);
 
     NODISCARD bool                              try_parse_long_key( std::string_view key);
     NODISCARD bool                              try_parse_short_key( std::string_view key);
@@ -242,7 +239,7 @@ public:
     {
     }
 
-    ArgIdT
+    constexpr ArgIdT
     get_id() const
     {
         return static_cast< ArgIdT>( m_Id);
@@ -280,11 +277,12 @@ public:
 public:
     template< std::ranges::range CliArgTemplateRange> requires
         std::is_same_v< std::ranges::range_value_t< CliArgTemplateRange>, ArgTemplateT>
-    CommandLineArgumentParser( int argc, char const * argv[], CliArgTemplateRange & argTemplates)
-    :
-        CommandLineArgumentParserBase( argc, argv)
+    CommandLineArgumentParser( CliArgTemplateRange & argTemplates)
     {
         bool allOk = true;
+
+        if( auto size = std::ranges::distance( argTemplates); size > 0)
+            m_ArgIdLookupTable.reserve( static_cast< std::size_t>( size));
 
         for( ArgTemplateT const & argt : argTemplates)
             allOk &= m_ArgIdLookupTable.load_argument_template( static_cast< CommandLineArgumentTemplateBase const &>( argt));
@@ -294,11 +292,11 @@ public:
     };
 
     std::optional< Dict>
-    parse()
+    parse( int argc, char const * argv[])
     {
         std::optional< Dict> outDict = Dict{};
 
-        if( ! do_parse( *outDict))
+        if( ! do_parse( *outDict, argc, argv))
             outDict.reset();
 
         return outDict;

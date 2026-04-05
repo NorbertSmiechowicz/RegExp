@@ -26,7 +26,6 @@
 #include <utility>
 #include <array>
 
-
 ////////////////////////////////////////////////
 // CommandLineArgumentDictBase
 
@@ -57,7 +56,7 @@ CommandLineArgumentDictBase::do_get_argument_value( CommandLineArgumentId argId)
 {
     InnerDict::const_iterator entry = m_Dict.find( argId);
 
-    return entry != m_Dict.end() ? &entry->second : nullptr;
+    return entry != m_Dict.end() ? &entry->second : end();
 }
 
 CommandLineArgumentDictBase::value_type &
@@ -125,6 +124,13 @@ CommandLineArgumentIdLookupTable::clear()
     m_ShortKeyLookup.clear();
 }
 
+void
+CommandLineArgumentIdLookupTable::reserve( std::size_t size)
+{
+    m_LongKeyLookup.reserve( size);
+    m_ShortKeyLookup.reserve( size);
+}
+
 bool
 CommandLineArgumentIdLookupTable::load_argument_template( CommandLineArgumentTemplateBase const & argTemplate)
 {
@@ -163,7 +169,7 @@ CommandLineArgumentIdLookupTable::register_long_key( std::string_view key, Comma
         }
     }
 
-    m_LongKeyLookup[ key] = argId;
+    m_LongKeyLookup.emplace( key, argId);
     return true;
 }
 
@@ -188,7 +194,7 @@ CommandLineArgumentIdLookupTable::register_short_key( std::string_view key, Comm
         }
     }
 
-    m_ShortKeyLookup[ key] = argId;
+    m_ShortKeyLookup.emplace( key, argId);
     return true;
 }
 
@@ -464,21 +470,14 @@ CommandLineArgumentLexer::try_syntax_doubly_quoted_value()
 ////////////////////////////////////////////////
 //  CommandLineArgumentParserBase
 
-CommandLineArgumentParserBase::CommandLineArgumentParserBase( int argc, char const * argv[])
-:
-    m_ArgCount{ argc},
-    m_ArgValues{ argv}
-{
-}
-
 bool
-CommandLineArgumentParserBase::lex()
+CommandLineArgumentParserBase::lex( int argc, char const * argv[])
 {
     std::string commandLine{ ""};
 
-    for( int argi = 1; argi < m_ArgCount; argi ++)
+    for( int argi = 1; argi < argc; argi ++)
     {
-        commandLine += m_ArgValues[ argi];
+        commandLine += argv[ argi];
         commandLine += ' ';
     }
 
@@ -488,12 +487,12 @@ CommandLineArgumentParserBase::lex()
 }
 
 bool
-CommandLineArgumentParserBase::do_parse( CommandLineArgumentDictBase & outDict)
+CommandLineArgumentParserBase::do_parse( CommandLineArgumentDictBase & outDict, int argc, char const * argv[])
 {
     if( m_ArgIdLookupTable.is_empty())
         return false;
 
-    if( ! lex())
+    if( ! lex( argc, argv))
         return false;
 
     outDict.clear();

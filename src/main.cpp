@@ -33,7 +33,8 @@ using CliArgParser = CommandLineArgumentParser< CliArgTemplate>;
 
 #define CLI_ARG_LIST_ITEM( TYPE, ID, ...) CliArgTemplate{ TYPE, CliArgId::ID, __VA_ARGS__},
 
-static constexpr std::array< CliArgTemplate, static_cast< std::size_t>( CliArgId::CliArgIdCount)> argTemplates{
+static constexpr std::array< CliArgTemplate, static_cast< std::size_t>( CliArgId::CliArgIdCount)> argTemplates
+{
     CLI_ARG_LIST_DEF
 };
 
@@ -44,7 +45,8 @@ static constexpr std::array< CliArgTemplate, static_cast< std::size_t>( CliArgId
 
 int main( int argc, char const * argv[])
 {
-    std::optional< CliArgParser::Dict> argDict = CliArgParser{ argc, argv, argTemplates}.parse();
+    CliArgParser cliArgParser{ argTemplates};
+    std::optional< CliArgParser::Dict> argDict{ cliArgParser.parse( argc, argv)};
 
     if( ! argDict.has_value())
         return 1;
