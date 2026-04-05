@@ -49,14 +49,14 @@ Mamy trzy konteksty ?:
     10. be_end_range                        :=  COLL_ELEM_SINGLE
                                              |  collating_symbol
 
-    11. be_collating_symbol                 :=  OPEN_DOT    COLL_ELEM_SINGLE    DOT_CLOSE
-                                             |  OPEN_DOT    COLL_ELEM_MULTI     DOT_CLOSE
-                                             |  OPEN_DOT    META_CHAR           DOT_CLOSE
+    11. be_collating_symbol                 :=  <open_dot>    COLL_ELEM_SINGLE    <dot_close>
+                                             |  <open_dot>    COLL_ELEM_MULTI     <dot_close>
+                                             |  <open_dot>    META_CHAR           <dot_close>
 
-    12. be_character_class                  :=  OPEN_EQUAL  COLL_ELEM_SINGLE    EQUAL_CLOSE
-                                             |  OPEN_EQUAL  COLL_ELEM_MULTI     EQUAL_CLOSE
+    12. be_character_class                  :=  <open_equal>  COLL_ELEM_SINGLE    <equal_close>
+                                             |  <open_equal>  COLL_ELEM_MULTI     <equal_close>
 
-    13. be_equivalence_class                :=  OPEN_COLON  CLASS_NAME          COLON_CLOSE
+    13. be_equivalence_class                :=  <open_colon>  CLASS_NAME          <colon_close>
 
 
 
@@ -90,41 +90,119 @@ Mamy trzy konteksty ?:
 
 */
 
+#ifndef _REGULAR_EXPRESSION_PARSER_H_
+# define _REGULAR_EXPRESSION_PARSER_H_
+
 # ifndef _STRING_STREAM_H_
 #  include "string_stream.hpp"
 # endif//_STRING_STREAM_H_
 
-#include <array>
-#include <string_view>
+# include <array>
+# include <string_view>
 
-enum class ExtendedRegularExpressionToken
+////////////////////////////////////////////////
+
+#define REGEXP_TOKEN_LIST\
+    REGEXP_TOKEN_ELEM( Backslash, "\\") /* Haha ha... */\
+    REGEXP_TOKEN_ELEM( Period, ".")\
+    REGEXP_TOKEN_ELEM( Asterisk, "*")\
+    REGEXP_TOKEN_ELEM( QuestionMark, "?")\
+    REGEXP_TOKEN_ELEM( Plus, "+")\
+    REGEXP_TOKEN_ELEM( Pipe, "|")\
+    REGEXP_TOKEN_ELEM( Hyphen, "-")\
+    REGEXP_TOKEN_ELEM( Circumflex, "^")\
+    REGEXP_TOKEN_ELEM( Dollar, "$")\
+    REGEXP_TOKEN_ELEM( OpenParenthesis, "(")\
+    REGEXP_TOKEN_ELEM( CloseParenthesis, ")")\
+    REGEXP_TOKEN_ELEM( OpenBrace, "{")\
+    REGEXP_TOKEN_ELEM( CloseBrace, "}")\
+    REGEXP_TOKEN_ELEM( OpenBracket, "[")\
+    REGEXP_TOKEN_ELEM( CloseBracket, "]")\
+    REGEXP_TOKEN_ELEM( OpenDot, "[.")\
+    REGEXP_TOKEN_ELEM( DotClose, ".]")\
+    REGEXP_TOKEN_ELEM( OpenEqual, "[=")\
+    REGEXP_TOKEN_ELEM( EqualClose, "=]")\
+    REGEXP_TOKEN_ELEM( OpenColon, "[:")\
+    REGEXP_TOKEN_ELEM( ColonClose, ":]")\
+
+#define REGEXP_TOKEN_ELEM( ID, TEXT) ID,
+
+enum class RegularExpressionToken : std::size_t
 {
-    Circumlfex,
+    REGEXP_TOKEN_LIST
     Count
 };
 
-class BracketExpressionLexer
+#undef REGEXP_TOKEN_ELEM
+#define REGEXP_TOKEN_ELEM( ID, TEXT) TEXT,
+
+static constexpr std::array< std::string_view, static_cast< std::size_t>( RegularExpressionToken::Count)> m_TokenArray
 {
-    bool try_syntax();
+    REGEXP_TOKEN_LIST
 };
 
-class ExtendedRegularExpressionLexer
+#undef REGEXP_TOKEN_ELEM
+#undef REGEXP_TOKEN_LIST
+
+////////////////////////////////////////////////
+
+struct RegularExpressionSyntaxNode
 {
-    static constexpr std::array< std::string_view, 128> m_TokenTexts;
+};
 
-    struct TokenAlts
+class RegularExpressionSyntaxTree
+{
+};
+
+class RegularExpressionLexer
+{
+    StringStream & m_Stream;
+
+public:
+    RegularExpressionLexer( StringStream & stream)
+    :
+        m_Stream{ stream}
     {
-        std::size_t position;
-        std::size_t count;
-    };
+    }
 
-    static constexpr std::array< TokenAlts, static_cast< std::size_t>( ExtendedRegularExpressionToken::Count)> m_TokenArray
+    template< RegularExpressionToken tokenId>
+    bool
+    try_token()
     {
-        TokenAlts{ 0, 1}
-    };
+        if constexpr( tokenId < RegularExpressionToken::Count)
+        {
+            std::string_view token = m_TokenArray[ static_cast< std::size_t>( tokenId)];
 
-    StringStream                m_Stream;
+            if( std::string_view found; m_Stream.peek_string( found, token.length()))
+                if( found == token)
+                    return m_Stream.skip_char_count( token.length());
 
+        }
+
+        return false;
+    }
+};
+
+class BracketExpressionLexer : public RegularExpressionLexer
+{
+    bool                        try_syntax();
+
+    bool                        try_syntax_matching_list();
+    bool                        try_syntax_nonmatching_list();
+    bool                        try_syntax_bracket_list();
+    bool                        try_syntax_follow_list();
+    bool                        try_syntax_expression_term();
+    bool                        try_syntax_single_expression();
+    bool                        try_syntax_range_expression();
+    bool                        try_syntax_start_range();
+    bool                        try_syntax_end_range();
+    bool                        try_syntax_collating_symbol();
+    bool                        try_syntax_character_class();
+    bool                        try_syntax_equivalence_class();
+};
+
+class ExtendedRegularExpressionLexer : public RegularExpressionLexer
+{
     bool                        try_syntax();
 
     bool                        try_syntax_branch();
@@ -132,50 +210,9 @@ class ExtendedRegularExpressionLexer
     bool                        try_syntax_single_or_collating_element();
     bool                        try_syntax_duplication_symbol();
 
-    template< ExtendedRegularExpressionToken Token>
-    int
-    try_token()
-    {
-        constexpr auto const & token = m_TokenArray[ static_cast< std::size_t>( Token)];
-
-        if constexpr( token.count == 1)
-            return try_single_token< token.position>();
-        else
-            return try_sequence_token< token.position>( std::make_index_sequence< token.count>{});
-    }
-
-    template< std::size_t Begin, std::size_t... Offset>
-    int
-    try_sequence_token( std::index_sequence< Offset...>)
-    {
-        int matchedLength = -1;
-
-        [[maybe_unused]] bool shortCircuit = (((matchedLength = try_single_token< Begin + Offset>()) != -1) || ...);
-
-        return matchedLength;
-    };
-
-    template< std::size_t TokenPosition>
-    int
-    try_single_token()
-    {
-        constexpr std::string_view token = m_TokenTexts[ TokenPosition];
-
-        if constexpr( token.length() == 1)
-        {
-            if( char found; m_Stream.peek_char( found))
-                if( found == *token.data())
-                    return 1;
-
-            return -1;
-        }
-        else
-        {
-            if( std::string_view found; m_Stream.peek_string( found, token.length()))
-                if( found == token)
-                    return token.length();
-
-            return -1;
-        }
-    }
+    bool                        try_syntax_ordinary_character();
+    bool                        try_syntax_quoted_character();
+    bool                        try_syntax_duplication_count();
 };
+
+#endif//_REGULAR_EXPRESSION_PARSER_H_
