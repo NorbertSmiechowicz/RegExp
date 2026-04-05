@@ -1,6 +1,6 @@
 
-#ifndef _STRING_TYPES_H_
-# define _STRING_TYPES_H_
+#ifndef _STRING_STREAM_H_
+# define _STRING_STREAM_H_
 
 # ifndef _MACRO_LIB_H_
 #  include "macro_lib.hpp"
@@ -57,4 +57,4 @@ public:
     bool                        rollback();
 };
 
-#endif//_STRING_TYPES_H_
+#endif//_STRING_STREAM_H_

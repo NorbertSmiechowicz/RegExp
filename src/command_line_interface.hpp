@@ -44,9 +44,9 @@
 #  include "concepts.hpp"
 # endif//_CONCEPTS_H_
 
-# ifndef _STRING_TYPES_H_
+# ifndef _STRING_STREAM_H_
 #  include "string_stream.hpp"
-# endif//_STRING_TYPES_H_
+# endif//_STRING_STREAM_H_
 
 # include <cstdio>
 # include <list>
