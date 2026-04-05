@@ -148,9 +148,11 @@ class ExtendedRegularExpressionLexer
     int
     try_sequence_token( std::index_sequence< Offset...>)
     {
-        int allOk = -1;
+        int matchedLength = -1;
 
-        return (((allOk = try_single_token< Begin + Offset>()) != -1) || ...);
+        [[maybe_unused]] bool shortCircuit = (((matchedLength = try_single_token< Begin + Offset>()) != -1) || ...);
+
+        return matchedLength;
     };
 
     template< std::size_t TokenPosition>
