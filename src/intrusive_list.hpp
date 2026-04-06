@@ -1,11 +1,13 @@
 
 #include <utility>
 #include <cassert>
+#include <iterator>
 
 #define _LIST_EMPTY( list) ((list)->m_Head == nullptr && (list)->m_Tail == nullptr)
 #define _VALID_LIST_HEAD( list) ((list)->m_Head && ((list)->m_Head->*linkMember).prev == nullptr)
 #define _VALID_LIST_TAIL( list) ((list)->m_Tail && ((list)->m_Tail->*linkMember).next == nullptr)
-#define _LIST_IN_VALID_STATE( list) (_VALID_LIST_HEAD( list) && _VALID_LIST_TAIL( list)) || _LIST_EMPTY( list)
+#define _LIST_IN_VALID_STATE( list) ((_VALID_LIST_HEAD( list) && _VALID_LIST_TAIL( list)) || _LIST_EMPTY( list))
+#define _ITEM_UNLINKED( item) (((item).*linkMember).prev == nullptr && ((item).*linkMember).next == nullptr)
 
 template< typename T>
 class ListLink
@@ -34,7 +36,11 @@ private:
     class iterator_base
     {
     public:
+        using iterator_concept = std::forward_iterator_tag;
         using value_type = std::conditional< isConst, const T, T>::type;
+        using difference_type = std::ptrdiff_t; // musi być oznakowaną liczbą całkowitą żeby modelować std::input_or_output_iterator / potrzebny dla std::ranges::begin()
+        using reference = value_type &;
+        using pointer = value_type *;
 
         value_type * m_Curr;
         value_type * m_Next;
@@ -45,6 +51,14 @@ private:
             m_Curr{ ptr}
         {
             set_next();
+        }
+
+        constexpr
+        iterator_base() // musi mieć domyślny konstruktor żeby modelować: std::sentinel_for< /*iterator*/, /*iterator*/> / potrzebny dla std::ranges::end()
+        :
+            m_Curr{ nullptr},
+            m_Next{ nullptr}
+        {
         }
 
         constexpr void
@@ -88,19 +102,19 @@ private:
         }
 
         constexpr value_type &
-        operator*()
+        operator*() const   // muszą być wykonalne na constach żeby działały adaptery widoków, np std::views::filter()
         {
             return *m_Curr;
         }
 
         constexpr value_type *
-        operator->()
+        operator->() const
         {
             return m_Curr;
         }
 
         constexpr
-        operator value_type*()
+        operator value_type *() const
         {
             return m_Curr;
         }
@@ -109,6 +123,7 @@ private:
 public:
     using iterator = iterator_base< true>;
     using reverse_iterator = iterator_base< false>;
+    using const_iterator = iterator_base< true, true>;
 
     constexpr
     IntrusiveList()
@@ -185,10 +200,13 @@ public:
             m_Tail = (item.*linkMember).prev;
 
         if( T * prevItem = (item.*linkMember).prev)
-            (prevItem->*linkMember).next = std::exchange( (item.*linkMember).next, nullptr);
+            (prevItem->*linkMember).next = (item.*linkMember).next;
 
         if( T * nextItem = (item.*linkMember).next)
-            (nextItem->*linkMember).prev = std::exchange( (item.*linkMember).prev, nullptr);
+            (nextItem->*linkMember).prev = (item.*linkMember).prev;
+
+        (item.*linkMember).next = nullptr;
+        (item.*linkMember).prev = nullptr;
 
         assert( _LIST_IN_VALID_STATE( this));
     }
@@ -199,6 +217,7 @@ public:
         if( m_Head != nullptr)
             return link_before( item, *m_Head);
 
+        assert( _ITEM_UNLINKED( item));
         assert( _LIST_EMPTY( this));
 
         m_Head = &item;
@@ -211,6 +230,7 @@ public:
         if( m_Tail != nullptr)
             return link_after( *m_Tail, item);
 
+        assert( _ITEM_UNLINKED( item));
         assert( _LIST_EMPTY( this));
 
         m_Head = &item;
@@ -220,6 +240,7 @@ public:
     constexpr void
     link_before( T & item, T & beforeItem)
     {
+        assert( _ITEM_UNLINKED( item));
         assert( _VALID_LIST_TAIL( this));
 
         if( m_Head == &beforeItem)
@@ -232,6 +253,7 @@ public:
     constexpr void
     link_after( T & afterItem, T & item)
     {
+        assert( _ITEM_UNLINKED( item));
         assert( _VALID_LIST_HEAD( this));
 
         if( m_Tail == &afterItem)
@@ -338,6 +360,7 @@ public:
     }
 };
 
+#undef _ITEM_UNLINKED
 #undef _LIST_IN_VALID_STATE
 #undef _VALID_LIST_TAIL
 #undef _VALID_LIST_HEAD

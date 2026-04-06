@@ -7,6 +7,7 @@
 #include <iostream>
 #include <array>
 #include <numeric>
+#include <ranges>
 
 ////////////////////////////////////////////////
 
@@ -69,15 +70,29 @@ consteval_correctness_test()
 
     testList.emplace_front( 1U);
     testList.emplace_back( 2U);
-    testList.emplace_front( 3U);
+    testList.emplace_back( 3U);
     testList.emplace_back( 4U);
     testList.emplace_front( 5U);
 
+    TestListItem::List trashList{};
+
+    auto itemsToUnlink = testList
+        | std::views::filter([]( TestListItem & item)
+            {
+                return item.m_Size % 2 == 0;
+            });
+
+    for( TestListItem & item : itemsToUnlink)
+    {
+        testList.unlink( item);
+        trashList.link_back( item);
+    }
+
     return std::accumulate( testList.begin(), testList.end(), 0U,
-                            []( TestListItem const & left, TestListItem const & right)
-                            {
-                                return left.m_Size + right.m_Size;
-                            });
+        []( TestListItem const & left, TestListItem const & right)
+        {
+            return left.m_Size + right.m_Size;
+        });
 };
 
 
@@ -101,8 +116,11 @@ int main( int argc, char const * argv[])
 
     std::cout << '\n';
 
+
+    static_assert( std::sentinel_for< TestListItem::List::iterator, TestListItem::List::iterator>);
+
     std::size_t test{ consteval_correctness_test()};
-    assert( test == 15U);
+    assert( test == 9U);
 
     return 0;
 }

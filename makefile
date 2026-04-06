@@ -13,7 +13,7 @@ LDFLAGS			:=
 # SAN_FLAGS			:= -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
 SAN_FLAGS			:=
 COMMON_FLAGS		:= -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wnrvo -Wswitch-enum -Werror
-DEBUG_FLAGS		:= -g -O0
+DEBUG_FLAGS		:= -g -O0 -fconcepts-diagnostics-depth=10
 RELEASE_FLAGS		:= -O3 -DNDEBUG
 
 BUILD				?= debug
