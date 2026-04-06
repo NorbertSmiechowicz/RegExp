@@ -1,10 +1,12 @@
 
 #include "command_line_interface.hpp"
+#include "intrusive_list.hpp"
 
 #include <cstdio>
 #include <string>
 #include <iostream>
 #include <array>
+#include <numeric>
 
 ////////////////////////////////////////////////
 
@@ -43,6 +45,42 @@ static constexpr std::array< CliArgTemplate, static_cast< std::size_t>( CliArgId
 
 ////////////////////////////////////////////////
 
+
+class TestListItem
+{
+private:
+    ListLink< TestListItem>  m_Link;
+
+public:
+    using List = IntrusiveList< TestListItem, &TestListItem::m_Link, true>;
+
+public:
+    constexpr TestListItem( std::size_t val) : m_Size{ val}, m_Data{ nullptr} {}
+
+    std::size_t     m_Size;
+    void *          m_Data;
+};
+
+
+consteval std::size_t
+consteval_correctness_test()
+{
+    TestListItem::List testList{};
+
+    testList.emplace_front( 1U);
+    testList.emplace_back( 2U);
+    testList.emplace_front( 3U);
+    testList.emplace_back( 4U);
+    testList.emplace_front( 5U);
+
+    return std::accumulate( testList.begin(), testList.end(), 0U,
+                            []( TestListItem const & left, TestListItem const & right)
+                            {
+                                return left.m_Size + right.m_Size;
+                            });
+};
+
+
 int main( int argc, char const * argv[])
 {
     CliArgParser cliArgParser{ argTemplates};
@@ -62,6 +100,9 @@ int main( int argc, char const * argv[])
             std::cout<< fileText << ' ';
 
     std::cout << '\n';
+
+    std::size_t test{ consteval_correctness_test()};
+    assert( test == 15U);
 
     return 0;
 }

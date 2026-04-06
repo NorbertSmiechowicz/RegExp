@@ -93,6 +93,12 @@ StringStream::skip_char_count( std::size_t count)
     return false;
 }
 
+std::size_t
+StringStream::get_position() const
+{
+    return m_TextEnd > m_Cursor ? static_cast< std::size_t>( m_TextEnd - m_Cursor) : 0;
+}
+
 StringStreamCheckpoint
 StringStream::set_checkpoint()
 {

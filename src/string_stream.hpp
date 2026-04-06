@@ -34,6 +34,7 @@ public:
     NODISCARD bool              peek_string( std::string_view & outString, std::size_t length) const;
     NODISCARD bool              get_string( std::string_view & outString, std::size_t length);
     NODISCARD bool              skip_char_count( std::size_t count);
+    std::size_t                 get_position() const;
 
     StringStreamCheckpoint      set_checkpoint();
 };
